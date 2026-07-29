@@ -56,6 +56,15 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 const NODE_RENDER_DISTANCE = 240;
 const ROUTE_RENDER_DISTANCE = 185;
 const LABEL_RENDER_DISTANCE = 115;
+const GALAXY_COLORS: Record<string, readonly [number, number, number]> = {
+  "Origin sector": [217, 255, 85],
+  "Systems frontier": [86, 221, 255],
+  "Algorithm belt": [182, 135, 255],
+  "Reliability expanse": [255, 171, 73],
+  "Engineering outpost": [255, 105, 180],
+};
+const galaxyColor = (galaxy: string) =>
+  GALAXY_COLORS[galaxy] ?? [116, 230, 211];
 
 export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -647,9 +656,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           ) {
             continue;
           }
-          const routeRed = Math.round(116 + 101 * routeFocus);
-          const routeGreen = Math.round(230 + 25 * routeFocus);
-          const routeBlue = Math.round(211 - 126 * routeFocus);
+          const [routeRed, routeGreen, routeBlue] = galaxyColor(
+            article.galaxy,
+          );
           context.beginPath();
           context.moveTo(start.x, start.y);
           context.lineTo(end.x, end.y);
@@ -676,9 +685,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           9,
           width <= 680 ? 64 : 88,
         );
-        const red = Math.round(116 + 101 * focus);
-        const green = Math.round(230 + 25 * focus);
-        const blue = Math.round(211 - 126 * focus);
+        const [red, green, blue] = galaxyColor(node.article.galaxy);
         if (focus > 0.01) {
           const solarPulse = motionReduced
             ? 1
@@ -692,10 +699,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             node.y,
             coronaRadius,
           );
-          corona.addColorStop(0, `rgba(255, 255, 220, ${focus * 0.72})`);
-          corona.addColorStop(0.18, `rgba(217, 255, 85, ${focus * 0.48})`);
-          corona.addColorStop(0.52, `rgba(217, 255, 85, ${focus * 0.13})`);
-          corona.addColorStop(1, "rgba(217, 255, 85, 0)");
+          corona.addColorStop(0, `rgba(255, 255, 240, ${focus * 0.72})`);
+          corona.addColorStop(
+            0.18,
+            `rgba(${red}, ${green}, ${blue}, ${focus * 0.48})`,
+          );
+          corona.addColorStop(
+            0.52,
+            `rgba(${red}, ${green}, ${blue}, ${focus * 0.13})`,
+          );
+          corona.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
           context.fillStyle = corona;
           context.beginPath();
           context.arc(node.x, node.y, coronaRadius, 0, Math.PI * 2);
@@ -708,10 +721,10 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               width,
               node.y,
             );
-            flare.addColorStop(0, "rgba(217, 255, 85, 0)");
+            flare.addColorStop(0, `rgba(${red}, ${green}, ${blue}, 0)`);
             flare.addColorStop(
               clamp(node.x / width - 0.18, 0, 1),
-              "rgba(217, 255, 85, 0.025)",
+              `rgba(${red}, ${green}, ${blue}, 0.025)`,
             );
             flare.addColorStop(
               clamp(node.x / width, 0, 1),
@@ -719,16 +732,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             );
             flare.addColorStop(
               clamp(node.x / width + 0.18, 0, 1),
-              "rgba(116, 230, 211, 0.025)",
+              `rgba(${red}, ${green}, ${blue}, 0.025)`,
             );
-            flare.addColorStop(1, "rgba(116, 230, 211, 0)");
+            flare.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
             context.fillStyle = flare;
             context.fillRect(0, node.y - 0.75, width, 1.5);
 
             context.save();
             context.translate(node.x, node.y);
             context.rotate(time * 0.00008);
-            context.strokeStyle = `rgba(217, 255, 85, ${focus * 0.22})`;
+            context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${focus * 0.22})`;
             context.lineWidth = 0.8;
             for (let ray = 0; ray < 12; ray += 1) {
               const angle = (ray / 12) * Math.PI * 2;
@@ -752,7 +765,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             0,
             Math.PI * 2,
           );
-          context.strokeStyle = `rgba(217, 255, 85, ${focus * 0.48})`;
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${focus * 0.48})`;
           context.lineWidth = 1;
           context.stroke();
         }
@@ -765,7 +778,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             0,
             Math.PI * 2,
           );
-          context.strokeStyle = `rgba(217, 255, 85, ${arrivalPulse * 0.58})`;
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${arrivalPulse * 0.58})`;
           context.lineWidth = 1.2;
           context.stroke();
         }
@@ -796,9 +809,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             node.y,
             radius,
           );
-          solarCore.addColorStop(0, "#ffffef");
-          solarCore.addColorStop(0.38, "#efffa1");
-          solarCore.addColorStop(1, "#d9ff55");
+          solarCore.addColorStop(0, "#fffff0");
+          solarCore.addColorStop(
+            0.38,
+            `rgb(${Math.round((red + 255) / 2)}, ${Math.round((green + 255) / 2)}, ${Math.round((blue + 255) / 2)})`,
+          );
+          solarCore.addColorStop(1, `rgb(${red}, ${green}, ${blue})`);
           context.fillStyle = solarCore;
         } else {
           context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
@@ -817,21 +833,110 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           node.y + 0.5,
         );
 
-        if (focus > 0.6) {
-          context.fillStyle = "rgba(242, 239, 229, 0.94)";
-          context.font = '600 15px "Segoe UI", sans-serif';
-          context.textAlign = "center";
-          context.fillText(node.article.title, node.x, node.y + radius + 25);
-        } else if (focus > 0.01 || node.z < LABEL_RENDER_DISTANCE) {
-          const placeLabelLeft = node.x > width - 260;
-          context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
-          context.font = `${Math.round(400 + focus * 200)} ${13 + focus * 3}px "Segoe UI", sans-serif`;
-          context.textAlign = placeLabelLeft ? "right" : "left";
-          context.fillText(
-            node.article.title,
-            node.x + (placeLabelLeft ? -radius - 11 : radius + 11),
-            node.y - 1,
+        if (focus > 0.01 || node.z < LABEL_RENDER_DISTANCE) {
+          const title = node.article.title.toUpperCase();
+          const orbitAngle =
+            node.article.order * 2.399963 +
+            (motionReduced
+              ? 0
+              : time * 0.00028 * (node.article.order % 2 ? 1 : -1));
+          const orbitX = radius * 1.9 + (focus > 0.6 ? 42 : 18);
+          const orbitY = radius * 0.82 + (focus > 0.6 ? 22 : 10);
+          const planetX = node.x + Math.cos(orbitAngle) * orbitX;
+          const planetY = node.y + Math.sin(orbitAngle) * orbitY;
+          const planetRadius = clamp(
+            (focus > 0.6 ? 10 : 6) * node.scale,
+            5,
+            13,
           );
+
+          context.beginPath();
+          context.ellipse(
+            node.x,
+            node.y,
+            orbitX,
+            orbitY,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.22 + focus * 0.28})`;
+          context.lineWidth = 1;
+          context.stroke();
+
+          context.save();
+          context.shadowColor = `rgb(${red}, ${green}, ${blue})`;
+          context.shadowBlur = focus > 0.6 ? 20 : 12;
+          context.translate(planetX, planetY);
+          context.rotate(-0.32);
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.72)`;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.ellipse(
+            0,
+            0,
+            planetRadius * 1.8,
+            planetRadius * 0.55,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          context.stroke();
+          context.restore();
+
+          const titlePlanet = context.createRadialGradient(
+            planetX - planetRadius * 0.35,
+            planetY - planetRadius * 0.4,
+            planetRadius * 0.08,
+            planetX,
+            planetY,
+            planetRadius,
+          );
+          titlePlanet.addColorStop(0, "#fffff0");
+          titlePlanet.addColorStop(
+            0.28,
+            `rgb(${Math.round((red + 255) / 2)}, ${Math.round((green + 255) / 2)}, ${Math.round((blue + 255) / 2)})`,
+          );
+          titlePlanet.addColorStop(
+            1,
+            `rgb(${Math.round(red * 0.5)}, ${Math.round(green * 0.5)}, ${Math.round(blue * 0.5)})`,
+          );
+          context.fillStyle = titlePlanet;
+          context.beginPath();
+          context.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
+          context.fill();
+
+          context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
+          context.font = `${Math.round(500 + focus * 100)} ${focus > 0.6 ? 13 : 11 + focus * 2}px "Cascadia Code", "SFMono-Regular", Consolas, monospace`;
+          const titleWidth = context.measureText(title).width;
+          const rightBoundary = width <= 680 ? width - 16 : width - 380;
+          let placeLabelRight = Math.cos(orbitAngle) >= 0;
+          if (planetX + planetRadius + 8 + titleWidth > rightBoundary) {
+            placeLabelRight = false;
+          }
+          if (planetX - planetRadius - 8 - titleWidth < 16) {
+            placeLabelRight = true;
+          }
+          const titleX =
+            planetX + (placeLabelRight ? planetRadius + 10 : -planetRadius - 10);
+          const titleHeight = focus > 0.6 ? 24 : 20;
+          context.beginPath();
+          context.roundRect(
+            placeLabelRight ? titleX - 6 : titleX - titleWidth - 6,
+            planetY - titleHeight / 2,
+            titleWidth + 12,
+            titleHeight,
+            titleHeight / 2,
+          );
+          context.fillStyle = "rgba(3, 7, 6, 0.84)";
+          context.fill();
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.58)`;
+          context.lineWidth = 0.8;
+          context.stroke();
+
+          context.fillStyle = `rgba(242, 239, 229, ${0.82 + focus * 0.18})`;
+          context.textAlign = placeLabelRight ? "left" : "right";
+          context.fillText(title, titleX, planetY);
         }
 
         hitAreasRef.current.push({
