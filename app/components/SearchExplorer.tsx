@@ -100,12 +100,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           const angle = index * Math.PI * (3 - Math.sqrt(5));
           const vertical = 1 - (2 * (index + 0.5)) / articles.length;
           const ring = Math.sqrt(1 - vertical * vertical);
-          const shell = 340 + (index % 5) * 90;
+          const shell = 480 + (index % 5) * 140;
           return [
             article.id,
             {
               x: Math.cos(angle) * ring * shell,
-              y: vertical * shell * 0.82,
+              y: vertical * shell * 0.86,
               z: Math.sin(angle) * ring * shell,
             },
           ];
@@ -212,7 +212,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       warpRef.current = {
         active: true,
         startedAt: now,
-        duration: reducedMotionRef.current ? 650 : 1800,
+        duration: reducedMotionRef.current ? 500 : 1250,
         fromX: view.rotationX,
         fromY: view.rotationY,
         toX,
@@ -239,9 +239,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     let animationFrame = 0;
     let width = 0;
     let height = 0;
-    const galaxyStars = Array.from({ length: 680 }, (_, index) => {
+    const galaxyStars = Array.from({ length: 820 }, (_, index) => {
       const arm = index % 4;
-      const radius = 28 + ((Math.sin(index * 91.17) + 1) / 2) * 430;
+      const radius = 28 + ((Math.sin(index * 91.17) + 1) / 2) * 720;
       const drift = Math.sin(index * 37.91) * 0.48;
       const angle = arm * (Math.PI / 2) + radius * 0.018 + drift;
       return {
@@ -252,7 +252,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         tone: index % 13,
       };
     });
-    const deepStars = Array.from({ length: 340 }, (_, index) => ({
+    const deepStars = Array.from({ length: 420 }, (_, index) => ({
       angle: (index * 2.399963) % (Math.PI * 2),
       phase: (index * 0.618034) % 1,
       depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
@@ -373,15 +373,15 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         view.rotationX += (view.targetX - view.rotationX) * ease;
         view.rotationY += (view.targetY - view.rotationY) * ease;
         if (!motionReduced && !view.dragging) {
-          view.targetY += 0.0013;
-          const orbitHeight = -0.12 + Math.sin(time * 0.00022) * 0.09;
-          view.targetX += (orbitHeight - view.targetX) * 0.002;
+          view.targetY += 0.0026;
+          const orbitHeight = -0.12 + Math.sin(time * 0.00035) * 0.12;
+          view.targetX += (orbitHeight - view.targetX) * 0.003;
         }
       }
       flightDistance +=
-        frameDuration * (motionReduced ? 0 : 0.00013 + warpIntensity * 0.0004);
+        frameDuration * (motionReduced ? 0 : 0.00032 + warpIntensity * 0.00085);
       orbitPhase +=
-        frameDuration * (motionReduced ? 0 : 0.00012 + warpIntensity * 0.00008);
+        frameDuration * (motionReduced ? 0 : 0.00022 + warpIntensity * 0.00018);
 
       const focusBlend = warpProgress * warpProgress * (3 - 2 * warpProgress);
       const focusLevel = (id: string) => {
@@ -440,7 +440,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       context.translate(width / 2, height / 2);
       context.rotate(-0.38 + Math.sin(orbitPhase * 0.72) * 0.12);
       context.scale(1, 0.24);
-      const milkyRadius = Math.hypot(width, height) * 0.58;
+      const milkyRadius = Math.hypot(width, height) * 0.78;
       const milkyWay = context.createRadialGradient(
         0,
         0,
@@ -499,7 +499,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           ? 0.28
           : 0.12 + ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
         const alpha = pulse * (0.35 + star.depth * 0.45 + progress * 0.35);
-        const trail = (10 + warpIntensity * 72) * star.depth * progress;
+        const trail = (22 + warpIntensity * 130) * star.depth * progress;
         context.strokeStyle =
           star.tone === 0
             ? `rgba(217, 255, 85, ${alpha})`
