@@ -111,58 +111,16 @@ input,
 }
 
 .flight-telemetry {
-  position: absolute;
-  isolation: isolate;
-  overflow: hidden;
   min-height: 30px;
   padding: 8px 11px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--signal);
-  background: rgba(7, 16, 15, 0.64);
   color: #a8bcb8;
-  backdrop-filter: blur(2px);
 }
 
 .flight-telemetry::before {
   color: var(--signal);
   content: "[ NAV-COM ]";
-}
-
-.flight-telemetry::after {
-  position: absolute;
-  inset: -30%;
-  z-index: -1;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(228, 241, 239, 0.18) 0 1px,
-      transparent 1px 5px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(99, 230, 209, 0.12) 0 1px,
-      transparent 1px 4px
-    );
-  content: "";
-  opacity: 0.12;
-  animation: nav-com-static 420ms steps(2, end) infinite;
-  pointer-events: none;
-}
-
-@keyframes nav-com-static {
-  0% {
-    background-position:
-      0 0,
-      0 0;
-    transform: translate(0);
-  }
-
-  50% {
-    background-position:
-      3px -2px,
-      -2px 3px;
-    transform: translate(1px, -1px);
-  }
 }
 
 .galaxy-wordmark {
@@ -367,6 +325,43 @@ input,
 .galaxy-page .node-inspector > a:focus-visible {
   background: var(--signal);
   color: #04100e;
+}
+
+.flight-telemetry,
+.galaxy-wordmark,
+.galaxy-page .universe-controls,
+.navigator-steps,
+.galaxy-page .universe-search .search-shell,
+.galaxy-page .warp-results,
+.galaxy-page .node-inspector {
+  background-color: rgba(7, 16, 15, 0.64);
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(228, 241, 239, 0.032) 0 1px,
+      transparent 1px 5px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(99, 230, 209, 0.025) 0 1px,
+      transparent 1px 4px
+    );
+  backdrop-filter: blur(2px);
+  animation: explorer-ui-static 420ms steps(2, end) infinite;
+}
+
+@keyframes explorer-ui-static {
+  0% {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  50% {
+    background-position:
+      3px -2px,
+      -2px 3px;
+  }
 }
 
 .article-page {
