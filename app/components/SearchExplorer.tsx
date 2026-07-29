@@ -239,20 +239,20 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     let animationFrame = 0;
     let width = 0;
     let height = 0;
-    const galaxyStars = Array.from({ length: 520 }, (_, index) => {
+    const galaxyStars = Array.from({ length: 680 }, (_, index) => {
       const arm = index % 4;
-      const radius = 28 + ((Math.sin(index * 91.17) + 1) / 2) * 350;
+      const radius = 28 + ((Math.sin(index * 91.17) + 1) / 2) * 430;
       const drift = Math.sin(index * 37.91) * 0.48;
       const angle = arm * (Math.PI / 2) + radius * 0.018 + drift;
       return {
         x: Math.cos(angle) * radius,
-        y: Math.sin(index * 143.27) * (8 + radius * 0.055),
+        y: Math.sin(index * 143.27) * (8 + radius * 0.07),
         z: Math.sin(angle) * radius,
         size: index % 29 === 0 ? 2.2 : index % 7 === 0 ? 1.4 : 0.75,
         tone: index % 13,
       };
     });
-    const deepStars = Array.from({ length: 260 }, (_, index) => ({
+    const deepStars = Array.from({ length: 340 }, (_, index) => ({
       angle: (index * 2.399963) % (Math.PI * 2),
       phase: (index * 0.618034) % 1,
       depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
@@ -260,6 +260,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       size: index % 23 === 0 ? 1.8 : index % 7 === 0 ? 1.2 : 0.7,
       tone: index % 17,
     }));
+    const nebulaClouds = [
+      { x: 0.18, y: 0.28, radius: 0.48, color: "42, 112, 132" },
+      { x: 0.78, y: 0.32, radius: 0.42, color: "81, 48, 116" },
+      { x: 0.68, y: 0.76, radius: 0.5, color: "92, 47, 70" },
+    ];
     let flightDistance = 0;
     let orbitPhase = 0;
     let previousFrameTime = 0;
@@ -295,7 +300,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const distanceFromFocus = Math.hypot(localX, localY, localZ);
       const focusProximity = 1 - clamp(distanceFromFocus / 120, 0, 1);
       const sceneDepth =
-        Math.max(z, 48 + distanceFromFocus * 0.12) - focusProximity * 180;
+        Math.max(z, 48 + distanceFromFocus * 0.12) -
+        focusProximity * view.zoom * 0.58;
       const scale = view.zoom / (view.zoom + sceneDepth);
       const roll = Math.sin(orbitPhase) * 0.035;
       const cosRoll = Math.cos(roll);
@@ -406,6 +412,65 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       context.fillStyle = "#030706";
       context.fillRect(0, 0, width, height);
+      const nebulaTime = motionReduced ? 0 : time;
+      for (const [index, cloud] of nebulaClouds.entries()) {
+        const cloudX =
+          width *
+          (cloud.x + Math.sin(nebulaTime * 0.000055 + index * 2.1) * 0.035);
+        const cloudY =
+          height *
+          (cloud.y + Math.cos(nebulaTime * 0.000043 + index * 1.7) * 0.03);
+        const cloudRadius = Math.max(width, height) * cloud.radius;
+        const nebula = context.createRadialGradient(
+          cloudX,
+          cloudY,
+          0,
+          cloudX,
+          cloudY,
+          cloudRadius,
+        );
+        nebula.addColorStop(0, `rgba(${cloud.color}, 0.12)`);
+        nebula.addColorStop(0.38, `rgba(${cloud.color}, 0.055)`);
+        nebula.addColorStop(1, `rgba(${cloud.color}, 0)`);
+        context.fillStyle = nebula;
+        context.fillRect(0, 0, width, height);
+      }
+
+      context.save();
+      context.translate(width / 2, height / 2);
+      context.rotate(-0.38 + Math.sin(orbitPhase * 0.72) * 0.12);
+      context.scale(1, 0.24);
+      const milkyRadius = Math.hypot(width, height) * 0.58;
+      const milkyWay = context.createRadialGradient(
+        0,
+        0,
+        milkyRadius * 0.04,
+        0,
+        0,
+        milkyRadius,
+      );
+      milkyWay.addColorStop(0, "rgba(228, 244, 255, 0.12)");
+      milkyWay.addColorStop(0.24, "rgba(116, 230, 211, 0.075)");
+      milkyWay.addColorStop(0.58, "rgba(87, 107, 164, 0.048)");
+      milkyWay.addColorStop(1, "rgba(34, 44, 74, 0)");
+      context.fillStyle = milkyWay;
+      context.beginPath();
+      context.arc(0, 0, milkyRadius, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = "rgba(0, 2, 8, 0.18)";
+      context.beginPath();
+      context.ellipse(
+        0,
+        milkyRadius * 0.02,
+        milkyRadius * 0.92,
+        milkyRadius * 0.11,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      context.fill();
+      context.restore();
+
       const glow = context.createRadialGradient(
         width * 0.5,
         height * 0.5,
@@ -559,7 +624,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           motionReduced || arrivalAge > 1200
             ? 0
             : 1 - clamp(arrivalAge / 1200, 0, 1);
-        const radius = clamp((14 + focus * 14) * node.scale, 9, 40);
+        const radius = clamp(
+          (14 + focus * 28) * node.scale,
+          9,
+          width <= 680 ? 64 : 88,
+        );
         const red = Math.round(116 + 101 * focus);
         const green = Math.round(230 + 25 * focus);
         const blue = Math.round(211 - 126 * focus);
@@ -586,6 +655,29 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           context.fill();
 
           if (focus > 0.6) {
+            const flare = context.createLinearGradient(
+              0,
+              node.y,
+              width,
+              node.y,
+            );
+            flare.addColorStop(0, "rgba(217, 255, 85, 0)");
+            flare.addColorStop(
+              clamp(node.x / width - 0.18, 0, 1),
+              "rgba(217, 255, 85, 0.025)",
+            );
+            flare.addColorStop(
+              clamp(node.x / width, 0, 1),
+              `rgba(255, 255, 224, ${focus * 0.34})`,
+            );
+            flare.addColorStop(
+              clamp(node.x / width + 0.18, 0, 1),
+              "rgba(116, 230, 211, 0.025)",
+            );
+            flare.addColorStop(1, "rgba(116, 230, 211, 0)");
+            context.fillStyle = flare;
+            context.fillRect(0, node.y - 0.75, width, 1.5);
+
             context.save();
             context.translate(node.x, node.y);
             context.rotate(time * 0.00008);
