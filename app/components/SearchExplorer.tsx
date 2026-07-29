@@ -100,12 +100,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           const angle = index * Math.PI * (3 - Math.sqrt(5));
           const vertical = 1 - (2 * (index + 0.5)) / articles.length;
           const ring = Math.sqrt(1 - vertical * vertical);
-          const shell = 200 + (index % 4) * 45;
+          const shell = 340 + (index % 5) * 90;
           return [
             article.id,
             {
               x: Math.cos(angle) * ring * shell,
-              y: vertical * shell * 0.72,
+              y: vertical * shell * 0.82,
               z: Math.sin(angle) * ring * shell,
             },
           ];
