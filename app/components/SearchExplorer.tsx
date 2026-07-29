@@ -43,6 +43,8 @@ interface WarpState {
   targetId: string;
 }
 
+type JourneyPhase = "cruising" | "warping" | "arrived";
+
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
@@ -63,10 +65,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     pointerY: 0,
   });
   const reducedMotionRef = useRef(false);
+  const arrivalRef = useRef({ id: "", startedAt: 0 });
   const warpRef = useRef<WarpState>({
     active: false,
     startedAt: 0,
-    duration: 1450,
+    duration: 1800,
     fromX: 0,
     fromY: 0,
     toX: 0,
@@ -76,6 +79,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
+  const [journeyPhase, setJourneyPhase] = useState<JourneyPhase>("cruising");
   const selectedIdRef = useRef(selectedId);
 
   const positions = useMemo(
@@ -126,10 +130,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       view.targetX = toX;
       view.targetY = toY;
+      setJourneyPhase("warping");
       warpRef.current = {
         active: true,
         startedAt: performance.now(),
-        duration: reducedMotionRef.current ? 650 : 1450,
+        duration: reducedMotionRef.current ? 650 : 1800,
         fromX: view.rotationX,
         fromY: view.rotationY,
         toX,
@@ -166,6 +171,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         tone: index % 13,
       };
     });
+    const deepStars = Array.from({ length: 260 }, (_, index) => ({
+      x: (Math.sin(index * 743.13) + 1) / 2,
+      y: (Math.cos(index * 319.77) + 1) / 2,
+      depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
+      size: index % 23 === 0 ? 1.8 : index % 7 === 0 ? 1.2 : 0.7,
+      tone: index % 17,
+    }));
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -206,13 +218,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       if (warp.active) {
         const progress = clamp((time - warp.startedAt) / warp.duration, 0, 1);
         warpProgress = progress;
-        const eased = 1 - Math.pow(1 - progress, 4);
+        const eased =
+          progress < 0.5
+            ? 8 * Math.pow(progress, 4)
+            : 1 - Math.pow(-2 * progress + 2, 4) / 2;
         warpIntensity = reducedMotion
           ? 0
-          : Math.pow(Math.sin(Math.PI * progress), 1.35);
+          : Math.pow(Math.sin(Math.PI * progress), 0.82);
         view.rotationX = warp.fromX + (warp.toX - warp.fromX) * eased;
         view.rotationY = warp.fromY + (warp.toY - warp.fromY) * eased;
-        view.zoom = warp.cruiseZoom - warpIntensity * 190;
+        view.zoom = warp.cruiseZoom - warpIntensity * 260;
 
         if (progress >= 1) {
           warp.active = false;
@@ -220,7 +235,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           view.rotationY = warp.toY;
           view.zoom = warp.cruiseZoom;
           selectedIdRef.current = warp.targetId;
+          arrivalRef.current = { id: warp.targetId, startedAt: time };
           setSelectedId(warp.targetId);
+          setJourneyPhase("arrived");
         }
       } else {
         const ease = reducedMotion ? 1 : 0.075;
@@ -256,14 +273,28 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       context.fillStyle = glow;
       context.fillRect(0, 0, width, height);
 
-      for (let index = 0; index < 150; index += 1) {
-        const x = ((Math.sin(index * 743.13) + 1) / 2) * width;
-        const y = ((Math.cos(index * 319.77) + 1) / 2) * height;
+      for (const star of deepStars) {
+        const driftX = Math.sin(view.rotationY) * 18 * star.depth;
+        const driftY = Math.sin(view.rotationX) * 14 * star.depth;
+        const x = (star.x * width + driftX + width) % width;
+        const y = (star.y * height + driftY + height) % height;
         const pulse = reducedMotion
           ? 0.28
-          : 0.18 + ((Math.sin(time * 0.001 + index) + 1) / 2) * 0.26;
-        context.fillStyle = `rgba(242, 239, 229, ${pulse})`;
-        context.fillRect(x, y, index % 11 === 0 ? 1.5 : 1, index % 11 === 0 ? 1.5 : 1);
+          : 0.12 +
+            ((Math.sin(time * 0.001 + star.x * 30) + 1) / 2) * 0.28;
+        const alpha = pulse * (0.45 + star.depth * 0.55);
+        context.strokeStyle =
+          star.tone === 0
+            ? `rgba(217, 255, 85, ${alpha})`
+            : `rgba(225, 235, 255, ${alpha})`;
+        context.lineWidth = star.size;
+        context.beginPath();
+        context.moveTo(x, y);
+        context.lineTo(
+          x + (x - width / 2) * warpIntensity * star.depth * 0.22,
+          y + (y - height / 2) * warpIntensity * star.depth * 0.22,
+        );
+        context.stroke();
       }
 
       for (const star of galaxyStars) {
@@ -333,6 +364,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       hitAreasRef.current = [];
       for (const node of projected) {
         const focus = focusLevel(node.article.id);
+        const arrivalAge =
+          arrivalRef.current.id === node.article.id
+            ? time - arrivalRef.current.startedAt
+            : Number.POSITIVE_INFINITY;
+        const arrivalPulse =
+          reducedMotion || arrivalAge > 1200
+            ? 0
+            : 1 - clamp(arrivalAge / 1200, 0, 1);
         const radius = clamp((11 + focus * 8) * node.scale, 7, 27);
         const red = Math.round(116 + 101 * focus);
         const green = Math.round(230 + 25 * focus);
@@ -350,6 +389,19 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           );
           context.strokeStyle = `rgba(217, 255, 85, ${focus * 0.48})`;
           context.lineWidth = 1;
+          context.stroke();
+        }
+        if (arrivalPulse > 0.01) {
+          context.beginPath();
+          context.arc(
+            node.x,
+            node.y,
+            radius * (2.2 + (1 - arrivalPulse) * 5.5),
+            0,
+            Math.PI * 2,
+          );
+          context.strokeStyle = `rgba(217, 255, 85, ${arrivalPulse * 0.58})`;
+          context.lineWidth = 1.2;
           context.stroke();
         }
         const halo = context.createRadialGradient(
@@ -414,6 +466,19 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         tunnel.addColorStop(1, `rgba(0, 3, 7, ${warpIntensity * 0.42})`);
         context.fillStyle = tunnel;
         context.fillRect(0, 0, width, height);
+
+        context.save();
+        context.translate(width / 2, height / 2);
+        for (let ring = 0; ring < 5; ring += 1) {
+          const phase = (warpProgress * 1.7 + ring / 5) % 1;
+          const radius = phase * Math.max(width, height) * 0.58;
+          context.beginPath();
+          context.arc(0, 0, radius, 0, Math.PI * 2);
+          context.strokeStyle = `rgba(116, 230, 211, ${(1 - phase) * warpIntensity * 0.13})`;
+          context.lineWidth = 1;
+          context.stroke();
+        }
+        context.restore();
       }
 
       animationFrame = window.requestAnimationFrame(draw);
@@ -429,8 +494,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     };
   }, [articles, positions]);
 
-  const rotateView = (amount: number) => {
+  const cancelWarp = () => {
     warpRef.current.active = false;
+    setJourneyPhase("cruising");
+  };
+
+  const rotateView = (amount: number) => {
+    cancelWarp();
     viewRef.current.targetY += amount;
   };
 
@@ -459,7 +529,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       id="explore"
       aria-label="Interactive knowledge galaxy"
     >
-      <div className="universe-shell">
+      <div className="universe-shell" data-journey={journeyPhase}>
         <canvas
           ref={canvasRef}
           className="universe-canvas"
@@ -478,7 +548,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           }}
           onPointerDown={(event) => {
             const view = viewRef.current;
-            warpRef.current.active = false;
+            cancelWarp();
             view.dragging = true;
             view.moved = false;
             view.pointerX = event.clientX;
@@ -506,7 +576,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           }}
           onWheel={(event) => {
             event.preventDefault();
-            warpRef.current.active = false;
+            cancelWarp();
             viewRef.current.zoom = clamp(
               viewRef.current.zoom + event.deltaY * 0.55,
               420,
@@ -514,6 +584,19 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             );
           }}
         />
+
+        <div className="voyage-reticle" aria-hidden="true" />
+
+        <div className="flight-telemetry" aria-live="polite">
+          <span className="telemetry-signal" aria-hidden="true" />
+          <span>
+            {journeyPhase === "warping"
+              ? "Travelling through knowledge space"
+              : journeyPhase === "arrived"
+                ? "Coordinate locked"
+                : "Cruising the knowledge galaxy"}
+          </span>
+        </div>
 
         <Link className="galaxy-wordmark" href="/">
           <span className="brand-mark" aria-hidden="true">
@@ -595,7 +678,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           <button
             type="button"
             onClick={() => {
-              warpRef.current.active = false;
+              cancelWarp();
               viewRef.current.targetX = -0.12;
               viewRef.current.targetY = -0.45;
               viewRef.current.zoom = 680;
