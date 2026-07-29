@@ -114,6 +114,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const selectedArticle =
     articles.find((article) => article.id === selectedId) ?? articles[0];
 
+  useEffect(() => {
+    if (journeyPhase !== "arrived") return;
+    const timer = window.setTimeout(() => setJourneyPhase("cruising"), 1400);
+    return () => window.clearTimeout(timer);
+  }, [journeyPhase]);
+
   const warpTo = useCallback(
     (id: string) => {
       const position = positions.get(id);
@@ -172,12 +178,15 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       };
     });
     const deepStars = Array.from({ length: 260 }, (_, index) => ({
-      x: (Math.sin(index * 743.13) + 1) / 2,
-      y: (Math.cos(index * 319.77) + 1) / 2,
+      angle: ((Math.sin(index * 743.13) + 1) / 2) * Math.PI * 2,
+      phase: (Math.cos(index * 319.77) + 1) / 2,
       depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
+      speed: 0.72 + ((Math.cos(index * 83.19) + 1) / 2) * 0.64,
       size: index % 23 === 0 ? 1.8 : index % 7 === 0 ? 1.2 : 0.7,
       tone: index % 17,
     }));
+    let flightDistance = 0;
+    let previousFrameTime = 0;
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -212,6 +221,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     const draw = (time: number) => {
       const view = viewRef.current;
       const warp = warpRef.current;
+      const frameDuration =
+        previousFrameTime === 0 ? 0 : Math.min(time - previousFrameTime, 32);
+      previousFrameTime = time;
       let warpIntensity = 0;
       let warpProgress = 0;
 
@@ -243,8 +255,15 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const ease = reducedMotion ? 1 : 0.075;
         view.rotationX += (view.targetX - view.rotationX) * ease;
         view.rotationY += (view.targetY - view.rotationY) * ease;
-        if (!reducedMotion && !view.dragging) view.targetY += 0.00022;
+        if (!reducedMotion && !view.dragging) {
+          view.targetY += 0.00075;
+          const orbitHeight = -0.12 + Math.sin(time * 0.00022) * 0.09;
+          view.targetX += (orbitHeight - view.targetX) * 0.002;
+        }
       }
+      flightDistance +=
+        frameDuration *
+        (reducedMotion ? 0 : 0.000045 + warpIntensity * 0.00032);
 
       const focusBlend =
         warpProgress * warpProgress * (3 - 2 * warpProgress);
@@ -274,26 +293,29 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       context.fillRect(0, 0, width, height);
 
       for (const star of deepStars) {
-        const driftX = Math.sin(view.rotationY) * 18 * star.depth;
-        const driftY = Math.sin(view.rotationX) * 14 * star.depth;
-        const x = (star.x * width + driftX + width) % width;
-        const y = (star.y * height + driftY + height) % height;
+        const progress = (star.phase + flightDistance * star.speed) % 1;
+        const distance =
+          Math.pow(progress, 1.7) * Math.hypot(width, height) * 0.62;
+        const angle = star.angle + view.rotationY * 0.045;
+        const directionX = Math.cos(angle);
+        const directionY = Math.sin(angle);
+        const x = width / 2 + directionX * distance;
+        const y = height / 2 + directionY * distance;
         const pulse = reducedMotion
           ? 0.28
           : 0.12 +
-            ((Math.sin(time * 0.001 + star.x * 30) + 1) / 2) * 0.28;
-        const alpha = pulse * (0.45 + star.depth * 0.55);
+            ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
+        const alpha =
+          pulse * (0.35 + star.depth * 0.45 + progress * 0.35);
+        const trail = (2.5 + warpIntensity * 58) * star.depth * progress;
         context.strokeStyle =
           star.tone === 0
             ? `rgba(217, 255, 85, ${alpha})`
             : `rgba(225, 235, 255, ${alpha})`;
-        context.lineWidth = star.size;
+        context.lineWidth = star.size * (0.7 + progress * 0.8);
         context.beginPath();
-        context.moveTo(x, y);
-        context.lineTo(
-          x + (x - width / 2) * warpIntensity * star.depth * 0.22,
-          y + (y - height / 2) * warpIntensity * star.depth * 0.22,
-        );
+        context.moveTo(x - directionX * trail, y - directionY * trail);
+        context.lineTo(x, y);
         context.stroke();
       }
 
@@ -594,7 +616,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               ? "Travelling through knowledge space"
               : journeyPhase === "arrived"
                 ? "Coordinate locked"
-                : "Cruising the knowledge galaxy"}
+                : "Orbiting the knowledge galaxy"}
           </span>
         </div>
 
