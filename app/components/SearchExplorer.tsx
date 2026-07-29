@@ -318,6 +318,18 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       { x: 0.78, y: 0.32, radius: 0.42, color: "81, 48, 116" },
       { x: 0.68, y: 0.76, radius: 0.5, color: "92, 47, 70" },
     ];
+    const distantGalaxies = [
+      { x: 0.08, y: 0.14, radius: 0.09, tilt: -0.42, squash: 0.2, color: "116, 230, 211" },
+      { x: 0.28, y: 0.09, radius: 0.055, tilt: 0.68, squash: 0.34, color: "182, 135, 255" },
+      { x: 0.51, y: 0.16, radius: 0.07, tilt: -0.18, squash: 0.26, color: "225, 235, 255" },
+      { x: 0.78, y: 0.12, radius: 0.08, tilt: 0.36, squash: 0.22, color: "86, 221, 255" },
+      { x: 0.94, y: 0.3, radius: 0.065, tilt: -0.72, squash: 0.3, color: "255, 105, 180" },
+      { x: 0.07, y: 0.57, radius: 0.075, tilt: 0.22, squash: 0.25, color: "255, 171, 73" },
+      { x: 0.2, y: 0.82, radius: 0.06, tilt: -0.64, squash: 0.32, color: "182, 135, 255" },
+      { x: 0.47, y: 0.9, radius: 0.08, tilt: 0.14, squash: 0.2, color: "116, 230, 211" },
+      { x: 0.72, y: 0.84, radius: 0.052, tilt: 0.82, squash: 0.36, color: "225, 235, 255" },
+      { x: 0.91, y: 0.7, radius: 0.09, tilt: -0.28, squash: 0.24, color: "86, 221, 255" },
+    ];
     let flightDistance = 0;
     let orbitPhase = 0;
     let previousFrameTime = 0;
@@ -495,6 +507,43 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         nebula.addColorStop(1, `rgba(${cloud.color}, 0)`);
         context.fillStyle = nebula;
         context.fillRect(0, 0, width, height);
+      }
+
+      for (const [index, galaxy] of distantGalaxies.entries()) {
+        const drift = motionReduced
+          ? 0
+          : Math.sin(orbitPhase * 1.8 + index * 1.7) * 0.01;
+        const radius = Math.max(width, height) * galaxy.radius;
+
+        context.save();
+        context.translate(
+          width * (galaxy.x + drift),
+          height * (galaxy.y - drift * 0.6),
+        );
+        context.rotate(galaxy.tilt + drift * 2.5);
+        context.scale(1, galaxy.squash);
+        const halo = context.createRadialGradient(0, 0, 0, 0, 0, radius);
+        halo.addColorStop(0, "rgba(242, 239, 229, 0.42)");
+        halo.addColorStop(0.12, `rgba(${galaxy.color}, 0.25)`);
+        halo.addColorStop(0.5, `rgba(${galaxy.color}, 0.09)`);
+        halo.addColorStop(1, `rgba(${galaxy.color}, 0)`);
+        context.fillStyle = halo;
+        context.beginPath();
+        context.arc(0, 0, radius, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = "rgba(0, 2, 8, 0.3)";
+        context.beginPath();
+        context.ellipse(
+          0,
+          radius * 0.07,
+          radius * 0.9,
+          radius * 0.1,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        context.fill();
+        context.restore();
       }
 
       context.save();
