@@ -321,6 +321,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     let flightDistance = 0;
     let orbitPhase = 0;
     let previousFrameTime = 0;
+    let focusedSunFade = selectedIdRef.current ? 1 : 0;
     let focusOrigin = positions.get(selectedIdRef.current) ?? {
       x: 0,
       y: 0,
@@ -394,6 +395,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const frameDuration =
         previousFrameTime === 0 ? 0 : Math.min(time - previousFrameTime, 32);
       previousFrameTime = time;
+      const focusedSunTarget = selectedIdRef.current || warp.targetId ? 1 : 0;
+      const fadeEase = motionReduced
+        ? 1
+        : 1 - Math.exp(-frameDuration / 180);
+      focusedSunFade += (focusedSunTarget - focusedSunFade) * fadeEase;
       let warpIntensity = 0;
       let warpProgress = 0;
 
@@ -669,7 +675,6 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       }
 
       hitAreasRef.current = [];
-      const hasFocusedSun = Boolean(selectedIdRef.current || warp.targetId);
       for (const node of projected) {
         const focus = focusLevel(node.article.id);
         const arrivalAge =
@@ -689,7 +694,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const [baseRed, baseGreen, baseBlue] = galaxyColor(
           node.article.galaxy,
         );
-        const nodeBrightness = hasFocusedSun ? 0.2 + focus * 0.8 : 1;
+        const nodeBrightness =
+          1 - focusedSunFade * (1 - focus) * 0.8;
         const red = Math.round(baseRed * nodeBrightness);
         const green = Math.round(baseGreen * nodeBrightness);
         const blue = Math.round(baseBlue * nodeBrightness);
