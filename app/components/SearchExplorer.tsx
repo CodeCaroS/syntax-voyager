@@ -14,7 +14,7 @@ export interface SearchArticle {
   relations: Array<{ target: string; type: string }>;
   searchText: string;
   galaxy: string;
-  headings: string[];
+  tags: string[];
 }
 
 interface Point3D {
@@ -854,38 +854,38 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             );
           });
 
-          const headingAngleFor = (index: number) =>
+          const tagAngleFor = (index: number) =>
             index * 2.399963 +
             (motionReduced
               ? 0
               : time *
                 (0.000035 + (index % 5) * 0.000009) *
                 (index % 2 === 0 ? 1 : -1));
-          const visibleHeadingLabels = new Set(
-            node.article.headings
+          const visibleTagLabels = new Set(
+            node.article.tags
               .map((_, index) => ({
                 index,
-                depth: (Math.sin(headingAngleFor(index)) + 1) / 2,
+                depth: (Math.sin(tagAngleFor(index)) + 1) / 2,
               }))
               .sort((a, b) => b.depth - a.depth)
               .slice(0, 2)
               .map(({ index }) => index),
           );
 
-          node.article.headings.forEach((heading, index) => {
+          node.article.tags.forEach((tag, index) => {
             const planetHue =
               (node.article.order * 23 + index * 137.508) % 360;
             const orbitX = radius * (1.85 + (index % 4) * 0.24);
             const orbitY = radius * (0.58 + (index % 5) * 0.13);
             const orbitTilt = -0.52 + (index % 6) * 0.18;
-            const headingAngle = headingAngleFor(index);
-            const localX = Math.cos(headingAngle) * orbitX;
-            const localY = Math.sin(headingAngle) * orbitY;
+            const tagAngle = tagAngleFor(index);
+            const localX = Math.cos(tagAngle) * orbitX;
+            const localY = Math.sin(tagAngle) * orbitY;
             const cosTilt = Math.cos(orbitTilt);
             const sinTilt = Math.sin(orbitTilt);
             const planetX = node.x + localX * cosTilt - localY * sinTilt;
             const planetY = node.y + localX * sinTilt + localY * cosTilt;
-            const depth = (Math.sin(headingAngle) + 1) / 2;
+            const depth = (Math.sin(tagAngle) + 1) / 2;
             const planetRadius = 4.5 + (index % 4) * 0.8 + depth * 2.5;
 
             context.save();
@@ -982,28 +982,26 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               context.fill();
             }
 
-            if (!visibleHeadingLabels.has(index)) return;
-            const headingTitle = heading.toUpperCase();
+            if (!visibleTagLabels.has(index)) return;
+            const tagTitle = tag.toUpperCase();
             context.font =
               '600 9px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
-            const headingWidth = context.measureText(headingTitle).width;
-            let placeHeadingRight = planetX >= node.x;
+            const tagWidth = context.measureText(tagTitle).width;
+            let placeTagRight = planetX >= node.x;
             if (
-              placeHeadingRight &&
-              planetX + planetRadius + headingWidth > width - 380
+              placeTagRight &&
+              planetX + planetRadius + tagWidth > width - 380
             ) {
-              placeHeadingRight = false;
+              placeTagRight = false;
             }
-            const headingX =
+            const tagX =
               planetX +
-              (placeHeadingRight ? planetRadius + 7 : -planetRadius - 7);
+              (placeTagRight ? planetRadius + 7 : -planetRadius - 7);
             context.beginPath();
             context.roundRect(
-              placeHeadingRight
-                ? headingX - 5
-                : headingX - headingWidth - 5,
+              placeTagRight ? tagX - 5 : tagX - tagWidth - 5,
               planetY - 9,
-              headingWidth + 10,
+              tagWidth + 10,
               18,
               9,
             );
@@ -1013,8 +1011,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             context.lineWidth = 0.8;
             context.stroke();
             context.fillStyle = "rgba(242, 239, 229, 0.9)";
-            context.textAlign = placeHeadingRight ? "left" : "right";
-            context.fillText(headingTitle, headingX, planetY);
+            context.textAlign = placeTagRight ? "left" : "right";
+            context.fillText(tagTitle, tagX, planetY);
           });
         } else {
           context.font = `700 ${clamp(9 * node.scale, 7, 12)}px "Cascadia Code", monospace`;

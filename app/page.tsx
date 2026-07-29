@@ -1,5 +1,5 @@
 import { SearchExplorer } from "@/app/components/SearchExplorer";
-import { articles, getArticleHeadings } from "@/lib/content";
+import { articles, getArticleTitle } from "@/lib/content";
 import { galaxyForOrder } from "@/lib/voyage";
 
 export default function Home() {
@@ -14,20 +14,30 @@ export default function Home() {
       prerequisites,
       relations,
       searchText,
-      body,
-    }) => ({
-      id,
-      title,
-      summary,
-      order,
-      level,
-      system,
-      prerequisites,
-      relations,
-      searchText,
-      galaxy: galaxyForOrder(order).title,
-      headings: getArticleHeadings(body).map((heading) => heading.title),
-    }),
+    }) => {
+      const tags = Array.from(
+        new Set([
+          ...title.split(/\s+(?:and|&)\s+/i),
+          system.replaceAll("-", " "),
+          ...prerequisites.map(getArticleTitle),
+          ...relations.map((relation) => getArticleTitle(relation.target)),
+        ]),
+      ).slice(0, 8);
+
+      return {
+        id,
+        title,
+        summary,
+        order,
+        level,
+        system,
+        prerequisites,
+        relations,
+        searchText,
+        galaxy: galaxyForOrder(order).title,
+        tags,
+      };
+    },
   );
 
   return (
