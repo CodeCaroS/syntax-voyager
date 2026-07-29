@@ -50,3 +50,15 @@ test("server-renders a static article coordinate", async () => {
   assert.match(html, /Algorithms and Pseudocode/);
   assert.doesNotMatch(html, /Coordinate not found/);
 });
+
+test("server-renders an intermediate software engineering lesson", async () => {
+  const response = await render("/articles/state-and-persistence");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /State and Persistence/);
+  assert.match(html, /Temporary state/);
+  assert.match(html, /Exercise: Trace the saved state/);
+  assert.match(html, /Events and Notifications/);
+  assert.doesNotMatch(html, /Coordinate not found/);
+});
