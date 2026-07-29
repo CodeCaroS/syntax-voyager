@@ -350,6 +350,18 @@ input,
   animation: explorer-ui-static 420ms steps(2, end) infinite;
 }
 
+.navigator-steps,
+.galaxy-page .node-inspector {
+  background-color: rgba(7, 16, 15, 0.5);
+  background-blend-mode: screen;
+}
+
+.universe-shell[data-journey="arrived"] .node-inspector {
+  animation:
+    node-profile-arrival 560ms cubic-bezier(0.2, 0.75, 0.2, 1),
+    explorer-ui-static 420ms steps(2, end) infinite;
+}
+
 @keyframes explorer-ui-static {
   0% {
     background-position:
