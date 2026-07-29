@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
+import "./spacecraft.css";
 
 const description =
   "Explore programming fundamentals as a connected, language-agnostic knowledge system.";

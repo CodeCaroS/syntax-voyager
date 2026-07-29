@@ -149,8 +149,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     );
   }, [articles, normalizedQuery]);
 
-  const selectedArticle =
-    articles.find((article) => article.id === selectedId) ?? articles[0];
+  const selectedArticle = articles.find(
+    (article) => article.id === selectedId,
+  );
   const selectedConnections = useMemo(() => {
     if (!selectedArticle) return [];
 
@@ -184,11 +185,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   }, [journeyPhase]);
 
   const warpTo = useCallback(
-    (id: string) => {
-      const position = positions.get(id);
-      if (!position) return;
+    (requestedId: string) => {
       const activeWarp = warpRef.current;
-      if (id === selectedIdRef.current && !activeWarp.active) return;
+      if (!requestedId && !selectedIdRef.current && !activeWarp.active) return;
+
+      const targetId = requestedId;
+      if (targetId === selectedIdRef.current && !activeWarp.active) return;
+      const position = targetId
+        ? positions.get(targetId)
+        : { x: 0, y: 0, z: 0 };
+      if (!position) return;
 
       const now = performance.now();
       let fromOrigin = positions.get(selectedIdRef.current) ?? {
@@ -216,15 +222,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         };
       }
 
+      const view = viewRef.current;
       const target = {
         x: position.x - fromOrigin.x,
         y: position.y - fromOrigin.y,
         z: position.z - fromOrigin.z,
       };
       const horizontalDistance = Math.hypot(target.x, target.z);
-      const view = viewRef.current;
-      const toX = Math.atan2(target.y, horizontalDistance);
-      const rawY = Math.atan2(target.x, target.z);
+      const toX = targetId
+        ? Math.atan2(target.y, horizontalDistance)
+        : -0.12;
+      const rawY = targetId ? Math.atan2(target.x, target.z) : -0.45;
       const shortestTurn = Math.atan2(
         Math.sin(rawY - view.rotationY),
         Math.cos(rawY - view.rotationY),
@@ -243,13 +251,23 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         toX,
         toY,
         cruiseZoom: view.zoom,
-        targetId: id,
+        targetId,
         fromOrigin,
         toOrigin: position,
       };
     },
     [positions],
   );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setQuery("");
+      warpTo("");
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [warpTo]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -389,9 +407,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           view.rotationY = warp.toY;
           view.zoom = warp.cruiseZoom;
           selectedIdRef.current = warp.targetId;
-          arrivalRef.current = { id: warp.targetId, startedAt: time };
+          arrivalRef.current = warp.targetId
+            ? { id: warp.targetId, startedAt: time }
+            : { id: "", startedAt: 0 };
           setSelectedId(warp.targetId);
-          setJourneyPhase("arrived");
+          setJourneyPhase(warp.targetId ? "arrived" : "cruising");
         }
       } else {
         const ease = motionReduced ? 1 : 0.075;
@@ -874,15 +894,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   };
 
   const travelRelative = (direction: -1 | 1) => {
+    if (articles.length === 0) return;
     const currentId = warpRef.current.active
       ? warpRef.current.targetId
       : selectedIdRef.current;
     const currentIndex = articles.findIndex(
       (article) => article.id === currentId,
     );
+    const startIndex =
+      currentIndex >= 0 ? currentIndex : direction === 1 ? -1 : 0;
     const nextIndex =
-      (Math.max(currentIndex, 0) + direction + articles.length) %
-      articles.length;
+      (startIndex + direction + articles.length) % articles.length;
     setQuery("");
     warpTo(articles[nextIndex].id);
   };
@@ -892,7 +914,10 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       .slice()
       .reverse()
       .find((area) => Math.hypot(area.x - x, area.y - y) <= area.r);
-    if (hit) warpTo(hit.id);
+    if (!hit) return;
+    warpTo(
+      hit.id === selectedIdRef.current && !warpRef.current.active ? "" : hit.id,
+    );
   };
 
   return (
@@ -906,6 +931,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           ref={canvasRef}
           className="universe-canvas"
           aria-label="Interactive 3D map of programming fundamentals. Drag to rotate, use the arrow keys, or choose a node from the search."
+          aria-description="Click the focused sun again or press Escape to return to the galaxy overview."
           role="img"
           tabIndex={0}
           onKeyDown={(event) => {
@@ -1077,6 +1103,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             }}
           >
             Flight {motionPaused ? "off" : "on"}
+          </button>
+          <button
+            type="button"
+            disabled={!selectedId && journeyPhase !== "warping"}
+            onClick={() => warpTo("")}
+            aria-label="Unselect focused sun and return to galaxy overview"
+          >
+            Unselect sun
           </button>
         </div>
 

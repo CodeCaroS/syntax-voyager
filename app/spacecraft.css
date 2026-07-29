@@ -1,0 +1,668 @@
+:root {
+  --ink: #050909;
+  --ink-soft: #081110;
+  --paper: #e4f1ef;
+  --paper-bright: #0d1716;
+  --muted: #809b97;
+  --line: rgba(99, 230, 209, 0.24);
+  --line-dark: rgba(99, 230, 209, 0.24);
+  --signal: #63e6d1;
+  --signal-soft: rgba(99, 230, 209, 0.12);
+  --cyan: #63e6d1;
+  --alert: #ff5d57;
+  --font-display: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+body {
+  background: #050909;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  content: "";
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+button,
+input,
+.brand-mark,
+.article,
+.article-content pre,
+.article-content code,
+.article-content details {
+  border-radius: 0;
+}
+
+.brand-mark {
+  border-color: var(--line);
+  color: var(--signal);
+}
+
+.live-dot,
+.telemetry-signal {
+  border-radius: 0;
+}
+
+.galaxy-page {
+  min-height: 100dvh;
+  background: #030706;
+  color-scheme: dark;
+}
+
+.galaxy-page .universe-shell {
+  background: #030706;
+  font-family: var(--font-mono);
+}
+
+.galaxy-page .universe-shell::before {
+  inset: 18px;
+  border-color: rgba(99, 230, 209, 0.24);
+}
+
+.galaxy-page .universe-shell::after {
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 5px,
+    rgba(99, 230, 209, 0.022) 5px,
+    rgba(99, 230, 209, 0.022) 6px
+  );
+  mix-blend-mode: normal;
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.voyage-reticle,
+.voyage-reticle::before {
+  border-radius: 0;
+}
+
+.voyage-reticle {
+  width: 82px;
+  height: 82px;
+  border-color: rgba(99, 230, 209, 0.26);
+  background:
+    linear-gradient(rgba(99, 230, 209, 0.28), rgba(99, 230, 209, 0.28))
+      center / 100% 1px no-repeat,
+    linear-gradient(rgba(99, 230, 209, 0.28), rgba(99, 230, 209, 0.28))
+      center / 1px 100% no-repeat;
+}
+
+.voyage-reticle::before {
+  border-color: rgba(99, 230, 209, 0.14);
+}
+
+.voyage-reticle::after {
+  border-radius: 0;
+  background: var(--alert);
+  box-shadow: 0 0 12px rgba(255, 93, 87, 0.72);
+}
+
+.flight-telemetry {
+  min-height: 30px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  background: #07100f;
+  color: #a8bcb8;
+}
+
+.flight-telemetry::before {
+  color: var(--signal);
+  content: "[ NAV-COM ]";
+}
+
+.galaxy-wordmark {
+  gap: 10px;
+  min-height: 48px;
+  padding: 5px 12px 5px 5px;
+  border: 1px solid var(--line);
+  background: #07100f;
+}
+
+.galaxy-wordmark strong {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.galaxy-page .universe-controls {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  border-color: var(--line);
+  background: #07100f;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.galaxy-page .universe-controls button,
+.navigator-steps button {
+  min-height: 34px;
+  border-color: var(--line);
+  background: transparent;
+  color: #9fb3af;
+  transition:
+    background-color 120ms linear,
+    color 120ms linear;
+}
+
+.galaxy-page .universe-controls button:hover,
+.galaxy-page .universe-controls button:focus-visible,
+.navigator-steps button:hover,
+.navigator-steps button:focus-visible {
+  border-color: var(--signal);
+  background: var(--signal);
+  color: #04100e;
+}
+
+.galaxy-page .universe-controls button:disabled {
+  background: transparent;
+  color: #425653;
+  cursor: not-allowed;
+}
+
+.navigator-steps {
+  border-color: var(--line);
+  background: #050b0b;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.navigator-steps::before {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  color: var(--signal);
+  content: "FLIGHT DECK // KNOWLEDGE NAVIGATION";
+  font: 8px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+}
+
+.navigator-steps::after {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  color: var(--muted);
+  content: "SYS-01 / AUTOPILOT READY";
+  font: 8px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+.navigator-steps button {
+  border: 1px solid var(--line);
+}
+
+.galaxy-page .universe-search > label {
+  color: #9fb3af;
+  letter-spacing: 0.14em;
+}
+
+.galaxy-page .universe-search > label::before {
+  color: var(--signal);
+  content: "[ WARP COORDINATE ] ";
+}
+
+.galaxy-page .universe-search .search-shell {
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  background: #07100f;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.galaxy-page .universe-search input {
+  color: var(--paper);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.galaxy-page .universe-search input::placeholder {
+  color: #566c68;
+}
+
+.search-prompt,
+.search-count {
+  color: var(--signal);
+}
+
+.warp-results {
+  border-color: var(--line);
+  background: #07100f;
+  box-shadow: none;
+}
+
+.warp-results button {
+  border-bottom-color: var(--line);
+  font: 10px/1.2 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.warp-results button:hover,
+.warp-results button:focus-visible {
+  background: var(--signal);
+  color: #04100e;
+}
+
+.warp-results button:hover span,
+.warp-results button:focus-visible span {
+  color: #04100e;
+}
+
+.galaxy-page .node-inspector {
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--signal);
+  background: #07100f;
+  box-shadow: none;
+  backdrop-filter: none;
+  scrollbar-color: var(--signal) #07100f;
+}
+
+.galaxy-page .node-profile-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.galaxy-page .node-profile-header::before {
+  width: 6px;
+  height: 6px;
+  background: var(--alert);
+  content: "";
+}
+
+.galaxy-page .node-inspector h2 {
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+
+.galaxy-page .node-inspector p {
+  color: #9fb3af;
+  font-family: var(--font-sans);
+}
+
+.galaxy-page .node-profile-meta {
+  border-color: var(--line);
+}
+
+.galaxy-page .node-profile-meta div,
+.galaxy-page .node-connections ul,
+.galaxy-page .node-connections li {
+  border-color: var(--line);
+}
+
+.galaxy-page .node-connections button {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.galaxy-page .node-connections button:hover,
+.galaxy-page .node-connections button:focus-visible {
+  background: var(--signal-soft);
+}
+
+.galaxy-page .node-inspector > a {
+  padding: 13px 10px;
+  border: 1px solid var(--line);
+}
+
+.galaxy-page .node-inspector > a:hover,
+.galaxy-page .node-inspector > a:focus-visible {
+  background: var(--signal);
+  color: #04100e;
+}
+
+.article-page {
+  background: #050909;
+  color-scheme: dark;
+}
+
+.article-topbar {
+  position: relative;
+  width: min(calc(100% - 32px), 1440px);
+  min-height: 72px;
+  margin: 16px auto 28px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  background: #08100f;
+}
+
+.article-topbar::after {
+  position: absolute;
+  left: 50%;
+  color: var(--signal);
+  content: "[ EDU-SYS / READER ONLINE ]";
+  font: 8px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  transform: translateX(-50%);
+}
+
+.article-topbar .nav-link {
+  padding: 12px;
+  border: 1px solid var(--line);
+}
+
+.article-topbar .nav-link:hover,
+.article-topbar .nav-link:focus-visible {
+  background: var(--signal);
+  color: #04100e;
+}
+
+.article-layout {
+  grid-template-columns: 220px minmax(0, 920px);
+  gap: 0;
+  width: min(calc(100% - 32px), 1240px);
+}
+
+.article-rail {
+  top: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-right: 0;
+  background: #07100f;
+}
+
+.back-link {
+  display: block;
+  padding: 12px 10px;
+  border: 1px solid var(--line);
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  background: var(--signal);
+  color: #04100e;
+}
+
+.rail-index {
+  border-color: var(--line);
+}
+
+.rail-index strong {
+  color: var(--signal);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.rail-route a,
+.entry-label,
+.rail-headings a {
+  border-color: var(--line);
+}
+
+.article {
+  border-color: var(--line);
+  background: #091110;
+  color: #c9d7d4;
+  box-shadow: none;
+}
+
+.article-header {
+  border-color: var(--line);
+  background: #0b1514;
+}
+
+.article-header h1 {
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
+}
+
+.article-header .eyebrow,
+.related-section .eyebrow {
+  color: var(--signal);
+}
+
+.article-summary {
+  color: #aebfbb;
+}
+
+.article-meta {
+  gap: 0;
+  padding-top: 0;
+  border: 1px solid var(--line);
+  color: #9bb0ac;
+}
+
+.article-meta span {
+  padding: 10px 12px;
+  border-right: 1px solid var(--line);
+}
+
+.article-meta span:last-child {
+  border-right: 0;
+}
+
+.learning-goal {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  background: #0c1917;
+}
+
+.learning-goal span {
+  color: var(--signal);
+}
+
+.article-content {
+  background: #091110;
+}
+
+.article-content h2,
+.article-content h3 {
+  color: var(--paper);
+  font-family: var(--font-mono);
+}
+
+.article-content h2 {
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.article-content h2::before {
+  color: var(--signal);
+  content: "// ";
+}
+
+.article-content strong {
+  color: var(--paper);
+}
+
+.article-content a {
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.article-content pre {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  background: #040807;
+  color: #dff9f3;
+}
+
+.article-content :not(pre) > code {
+  border: 1px solid var(--line);
+  background: #0d1b19;
+  color: var(--signal);
+}
+
+.article-content th,
+.article-content td {
+  border-color: var(--line);
+}
+
+.article-content th {
+  background: #0d1b19;
+  color: var(--signal);
+}
+
+.article-content details {
+  border-color: var(--line);
+  background: #0b1514;
+}
+
+.article-content summary {
+  color: var(--signal);
+}
+
+.article-content details[open] summary {
+  border-color: var(--line);
+}
+
+.article-pagination {
+  border-color: var(--line);
+}
+
+.article-pagination a + a {
+  border-color: var(--line);
+}
+
+.article-pagination a:hover,
+.article-pagination a:focus-visible {
+  background: var(--signal);
+  color: #04100e;
+}
+
+.article-pagination a:hover span,
+.article-pagination a:focus-visible span,
+.article-pagination a:hover strong,
+.article-pagination a:focus-visible strong {
+  color: #04100e;
+}
+
+.article-pagination strong,
+.related-section h2,
+.related-grid strong {
+  font-family: var(--font-mono);
+}
+
+.related-section {
+  background: #07100f;
+}
+
+.related-grid {
+  border-color: var(--line);
+}
+
+.related-grid a {
+  border-color: var(--line);
+}
+
+.related-grid a:hover,
+.related-grid a:focus-visible {
+  background: var(--signal);
+  color: #04100e;
+}
+
+.related-grid a:hover span,
+.related-grid a:focus-visible span,
+.related-grid a:hover strong,
+.related-grid a:focus-visible strong,
+.related-grid a:hover small,
+.related-grid a:focus-visible small {
+  color: #04100e;
+}
+
+@media (max-width: 980px) {
+  .article-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .article-rail {
+    border-right: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 680px) {
+  .galaxy-page .universe-shell::before {
+    inset: 10px;
+  }
+
+  .galaxy-wordmark {
+    max-width: calc(100% - 36px);
+  }
+
+  .galaxy-wordmark small {
+    display: none;
+  }
+
+  .flight-telemetry {
+    right: 28px;
+    left: 28px;
+    justify-content: center;
+    transform: none;
+  }
+
+  .galaxy-page .universe-controls {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .galaxy-page .universe-controls button {
+    min-width: 0;
+    padding: 9px 4px;
+    font-size: 7px;
+    line-height: 1.25;
+  }
+
+  .navigator-steps::before {
+    left: 12px;
+  }
+
+  .navigator-steps::after {
+    display: none;
+  }
+
+  .navigator-steps button {
+    min-width: 106px;
+  }
+
+  .galaxy-page .node-inspector {
+    border-top-width: 2px;
+  }
+
+  .article-topbar {
+    width: calc(100% - 20px);
+    padding: 0 10px;
+  }
+
+  .article-topbar::after {
+    display: none;
+  }
+
+  .article-layout {
+    width: calc(100% - 20px);
+  }
+
+  .article-header h1 {
+    font-size: clamp(38px, 12vw, 58px);
+  }
+
+  .article-meta span {
+    flex: 1 1 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .article-meta span:last-child {
+    border-bottom: 0;
+  }
+}
