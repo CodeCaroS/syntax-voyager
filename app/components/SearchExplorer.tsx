@@ -178,14 +178,15 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       };
     });
     const deepStars = Array.from({ length: 260 }, (_, index) => ({
-      angle: ((Math.sin(index * 743.13) + 1) / 2) * Math.PI * 2,
-      phase: (Math.cos(index * 319.77) + 1) / 2,
+      angle: (index * 2.399963) % (Math.PI * 2),
+      phase: (index * 0.618034) % 1,
       depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
       speed: 0.72 + ((Math.cos(index * 83.19) + 1) / 2) * 0.64,
       size: index % 23 === 0 ? 1.8 : index % 7 === 0 ? 1.2 : 0.7,
       tone: index % 17,
     }));
     let flightDistance = 0;
+    let orbitPhase = 0;
     let previousFrameTime = 0;
 
     const resize = () => {
@@ -209,10 +210,23 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const y = point.y * cosX - z1 * sinX;
       const z = point.y * sinX + z1 * cosX;
       const scale = view.zoom / (view.zoom + z);
+      const roll = Math.sin(orbitPhase) * 0.035;
+      const cosRoll = Math.cos(roll);
+      const sinRoll = Math.sin(roll);
+      const screenX = x1 * scale;
+      const screenY = y * scale;
 
       return {
-        x: width / 2 + x1 * scale,
-        y: height / 2 + y * scale,
+        x:
+          width / 2 +
+          Math.cos(orbitPhase) * width * 0.055 +
+          screenX * cosRoll -
+          screenY * sinRoll,
+        y:
+          height / 2 +
+          Math.sin(orbitPhase * 2) * height * 0.025 +
+          screenX * sinRoll +
+          screenY * cosRoll,
         z,
         scale,
       };
@@ -256,14 +270,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         view.rotationX += (view.targetX - view.rotationX) * ease;
         view.rotationY += (view.targetY - view.rotationY) * ease;
         if (!reducedMotion && !view.dragging) {
-          view.targetY += 0.00075;
+          view.targetY += 0.0013;
           const orbitHeight = -0.12 + Math.sin(time * 0.00022) * 0.09;
           view.targetX += (orbitHeight - view.targetX) * 0.002;
         }
       }
       flightDistance +=
         frameDuration *
-        (reducedMotion ? 0 : 0.000045 + warpIntensity * 0.00032);
+        (reducedMotion ? 0 : 0.00013 + warpIntensity * 0.0004);
+      orbitPhase +=
+        frameDuration *
+        (reducedMotion ? 0 : 0.00012 + warpIntensity * 0.00008);
 
       const focusBlend =
         warpProgress * warpProgress * (3 - 2 * warpProgress);
@@ -307,7 +324,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
         const alpha =
           pulse * (0.35 + star.depth * 0.45 + progress * 0.35);
-        const trail = (2.5 + warpIntensity * 58) * star.depth * progress;
+        const trail = (10 + warpIntensity * 72) * star.depth * progress;
         context.strokeStyle =
           star.tone === 0
             ? `rgba(217, 255, 85, ${alpha})`
