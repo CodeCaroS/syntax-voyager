@@ -52,9 +52,9 @@ type JourneyPhase = "cruising" | "warping" | "arrived";
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
-const NODE_RENDER_DISTANCE = 40;
-const ROUTE_RENDER_DISTANCE = -40;
-const LABEL_RENDER_DISTANCE = -220;
+const NODE_RENDER_DISTANCE = 240;
+const ROUTE_RENDER_DISTANCE = 185;
+const LABEL_RENDER_DISTANCE = 115;
 
 export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -292,7 +292,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const sinX = Math.sin(view.rotationX);
       const y = localY * cosX - z1 * sinX;
       const z = localY * sinX + z1 * cosX;
-      const scale = view.zoom / (view.zoom + z);
+      const distanceFromFocus = Math.hypot(localX, localY, localZ);
+      const focusProximity = 1 - clamp(distanceFromFocus / 120, 0, 1);
+      const sceneDepth =
+        Math.max(z, 48 + distanceFromFocus * 0.12) - focusProximity * 180;
+      const scale = view.zoom / (view.zoom + sceneDepth);
       const roll = Math.sin(orbitPhase) * 0.035;
       const cosRoll = Math.cos(roll);
       const sinRoll = Math.sin(roll);
@@ -319,7 +323,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           : projectedY,
         rawX: projectedX,
         rawY: projectedY,
-        z,
+        z: sceneDepth,
         scale,
       };
     };
