@@ -113,6 +113,31 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       ),
     [articles],
   );
+  const nodeSizeById = useMemo(() => {
+    const connections = new Map(
+      articles.map((article) => [article.id, new Set<string>()]),
+    );
+    for (const article of articles) {
+      const targets = new Set([
+        ...article.prerequisites,
+        ...article.relations.map((relation) => relation.target),
+      ]);
+      for (const target of targets) {
+        connections.get(article.id)?.add(target);
+        connections.get(target)?.add(article.id);
+      }
+    }
+    const maximum = Math.max(
+      1,
+      ...Array.from(connections.values(), (links) => links.size),
+    );
+    return new Map(
+      Array.from(connections, ([id, links]) => [
+        id,
+        0.72 + Math.sqrt(links.size / maximum) * 0.88,
+      ]),
+    );
+  }, [articles]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const results = useMemo(() => {
@@ -625,7 +650,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             ? 0
             : 1 - clamp(arrivalAge / 1200, 0, 1);
         const radius = clamp(
-          (14 + focus * 28) * node.scale,
+          (14 * (nodeSizeById.get(node.article.id) ?? 1) + focus * 28) *
+            node.scale,
           9,
           width <= 680 ? 64 : 88,
         );
@@ -835,7 +861,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       observer.disconnect();
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [articles, positions]);
+  }, [articles, nodeSizeById, positions]);
 
   const cancelWarp = () => {
     warpRef.current.active = false;
