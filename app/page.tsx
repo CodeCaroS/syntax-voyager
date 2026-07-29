@@ -1,5 +1,6 @@
 import { SearchExplorer } from "@/app/components/SearchExplorer";
 import { articles } from "@/lib/content";
+import { galaxyForOrder } from "@/lib/voyage";
 
 export default function Home() {
   const searchArticles = articles.map(
@@ -23,6 +24,7 @@ export default function Home() {
       prerequisites,
       relations,
       searchText,
+      galaxy: galaxyForOrder(order).title,
     }),
   );
 

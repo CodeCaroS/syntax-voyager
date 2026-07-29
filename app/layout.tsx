@@ -4,7 +4,7 @@ import "./globals.css";
 import "./spacecraft.css";
 
 const description =
-  "Explore programming fundamentals as a connected, language-agnostic knowledge system.";
+  "Navigate connected programming and software-engineering knowledge through galaxies, flight plans, expeditions, and simulations.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -25,6 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s · Syntax Voyager",
     },
     description,
+    icons: { icon: "/og.png" },
     openGraph: {
       title: "Syntax Voyager",
       description,

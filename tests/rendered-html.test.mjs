@@ -36,7 +36,8 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
   assert.match(html, /50(?:<!-- -->)? nodes online/);
   assert.match(html, /Node profile/);
   assert.match(html, /Connected coordinates/);
-  assert.match(html, /Interactive 3D map of programming fundamentals/);
+  assert.match(html, /Mission ctrl/);
+  assert.match(html, /Interactive 3D map of connected software knowledge/);
   assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
   assert.match(html, /Functions/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
@@ -61,6 +62,12 @@ test("server-renders a static article coordinate", async () => {
   assert.match(html, /Mission objective/);
   assert.match(html, /Exercise: Trace the journey/);
   assert.match(html, /Algorithms and Pseudocode/);
+  assert.match(html, /aria-label="On this page"/);
+  assert.match(html, /href="#variables-give-values-names"/);
+  assert.match(html, /id="variables-give-values-names"/);
+  assert.match(html, /Translation matrix/);
+  assert.match(html, /Show TypeScript/);
+  assert.match(html, /Confirm mastery/);
   assert.doesNotMatch(html, /Coordinate not found/);
 });
 
@@ -74,4 +81,32 @@ test("server-renders an intermediate software engineering lesson", async () => {
   assert.match(html, /Exercise: Trace the saved state/);
   assert.match(html, /Events and Notifications/);
   assert.doesNotMatch(html, /Coordinate not found/);
+});
+
+test("server-renders mission control with galaxies, routes, and expeditions", async () => {
+  const response = await render("/mission-control");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Your route through knowledge space/);
+  assert.match(html, /Five knowledge galaxies/);
+  assert.match(html, /Personal flight plans/);
+  assert.match(html, /Expedition campaigns/);
+  assert.match(html, /Origin sector/);
+  assert.match(html, /Reliability commander/);
+  assert.match(html, /Decode the guessing signal/);
+});
+
+test("server-renders the interactive pseudocode simulation deck", async () => {
+  const response = await render("/lab?challenge=cargo-function");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Flight simulator/);
+  assert.match(html, /Cargo function/);
+  assert.match(html, /Step instruction/);
+  assert.match(html, /Run simulation/);
+  assert.match(html, /Check mission/);
+  assert.match(html, /State telemetry/);
+  assert.match(html, /Execution trace/);
 });

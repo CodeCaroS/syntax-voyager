@@ -13,6 +13,7 @@ export interface SearchArticle {
   prerequisites: string[];
   relations: Array<{ target: string; type: string }>;
   searchText: string;
+  galaxy: string;
 }
 
 interface Point3D {
@@ -930,7 +931,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         <canvas
           ref={canvasRef}
           className="universe-canvas"
-          aria-label="Interactive 3D map of programming fundamentals. Drag to rotate, use the arrow keys, or choose a node from the search. Click the focused sun again or press Escape to return to the galaxy overview."
+          aria-label="Interactive 3D map of connected software knowledge. Drag to rotate, use the arrow keys, or choose a node from the search. Click the focused sun again or press Escape to return to the galaxy overview."
           role="img"
           tabIndex={0}
           onKeyDown={(event) => {
@@ -1111,6 +1112,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           >
             Unselect sun
           </button>
+          <Link href="/mission-control">Mission ctrl</Link>
         </div>
 
         {selectedArticle ? (
@@ -1130,8 +1132,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
                 <dd>{selectedArticle.level}</dd>
               </div>
               <div>
-                <dt>System</dt>
-                <dd>{selectedArticle.system.replaceAll("-", " ")}</dd>
+                <dt>Galaxy</dt>
+                <dd>{selectedArticle.galaxy}</dd>
               </div>
               <div>
                 <dt>Links</dt>

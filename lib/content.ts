@@ -58,3 +58,18 @@ export function readingMinutes(markdown: string) {
   const words = markdown.trim().split(/\s+/).length;
   return Math.max(1, Math.ceil(words / 220));
 }
+
+export function headingId(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function getArticleHeadings(markdown: string) {
+  return [...markdown.matchAll(/^##\s+(.+?)\s*$/gm)].map(([, title]) => ({
+    id: headingId(title),
+    title,
+  }));
+}

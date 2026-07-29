@@ -4,13 +4,20 @@ import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import HeadingScrollSpy from "@/app/components/HeadingScrollSpy";
+import LanguageBridge from "@/app/components/LanguageBridge";
+import LessonFlightRecorder from "@/app/components/LessonFlightRecorder";
 import {
   articles,
   getArticle,
+  getArticleHeadings,
   getArticleTitle,
   getRelatedArticles,
+  headingId,
   readingMinutes,
 } from "@/lib/content";
+import { isPseudocodeSource } from "@/lib/language-bridge";
+import { galaxyForOrder } from "@/lib/voyage";
 
 export const dynamicParams = false;
 
@@ -48,6 +55,8 @@ export default async function ArticlePage({
   );
   const previous = systemArticles[currentIndex - 1];
   const next = systemArticles[currentIndex + 1];
+  const headings = getArticleHeadings(article.body);
+  const galaxy = galaxyForOrder(article.order);
 
   return (
     <main className="article-page">
@@ -90,12 +99,13 @@ export default async function ArticlePage({
               ))
             )}
           </div>
+          <HeadingScrollSpy headings={headings} />
         </aside>
 
         <article className="article">
           <header className="article-header">
             <p className="eyebrow">
-              Programming fundamentals · Node{" "}
+              {galaxy.title} · Node{" "}
               {article.order.toString().padStart(2, "0")}
             </p>
             <h1>{article.title}</h1>
@@ -109,10 +119,30 @@ export default async function ArticlePage({
               <span>Mission objective</span>
               <p>{article.learningGoal}</p>
             </div>
+            <LessonFlightRecorder articleId={article.id} order={article.order} />
           </header>
 
           <div className="article-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              components={{
+                h2: ({ children }) => (
+                  <h2 id={headingId(String(children))}>{children}</h2>
+                ),
+                code: ({ className, children, ...props }) => {
+                  const source = String(children).replace(/\n$/, "");
+                  return className?.includes("language-text") &&
+                    isPseudocodeSource(source) ? (
+                    <LanguageBridge source={source} />
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+              }}
+            >
               {article.body}
             </ReactMarkdown>
           </div>

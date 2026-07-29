@@ -261,34 +261,25 @@ The first system succeeds when target users can:
 - use the 3D view without losing their location;
 - complete the expedition without external instructions.
 
-## 11. Implementation starting point
+## 11. Current implementation
 
-The content prototype is ready for implementation:
+The application now includes:
 
-- the pseudocode notation is documented;
-- the three representative articles are written;
-- all articles required to reach them are written;
-- the current graph contains no missing prerequisite or relation targets;
-- `content/CONTENT_CONTRACT.md` defines the loader contract;
-- `scripts/generate-content.mjs` verifies the contract and prerequisite graph,
-  then produces the application content bundle.
+- 50 validated articles rendered at stable URLs;
+- keyword search and a cinematic, keyboard-accessible knowledge galaxy;
+- five knowledge sectors derived from the same article graph;
+- five personal flight plans with device-local visits and mastery;
+- four guided expedition campaigns;
+- an interactive pseudocode simulator with stepping, state, output, function
+  call stacks, loop protection, and automatic checks;
+- TypeScript, Python, and Java translation views for lesson pseudocode;
+- prerequisites, related coordinates, previous/next navigation, and an
+  on-page heading navigator.
 
-The first implementation slice is the readable content path:
+The implementation still preserves one content model. Galaxies, routes,
+expeditions, search, and article navigation reference the validated article IDs
+instead of duplicating article content.
 
-1. Run content validation as a build prerequisite.
-2. Load draft articles during development.
-3. List articles in system order.
-4. Render an article at a stable URL derived from its ID.
-5. Show prerequisites and related articles.
-6. Search titles, summaries, learning goals, and article text with simple
-   case-insensitive matching.
-7. Provide keyboard-accessible navigation and semantic article markup.
-
-The slice is complete when all seven current articles can be found, opened,
-read, and traversed without the 3D interface. The 3D star map consumes the same
-validated graph in the following slice; it does not define a second content
-model.
-
-Technology selection belongs to implementation and must preserve this contract.
-The content model does not require a framework-specific CMS, database, account
-system, or search service.
+Progress is intentionally device-local. The current learning loop does not
+require a CMS, database, account system, AI tutor, or remote code-execution
+service.

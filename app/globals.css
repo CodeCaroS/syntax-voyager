@@ -661,7 +661,11 @@ footer > p {
   position: sticky;
   top: 28px;
   height: fit-content;
+  max-height: calc(100vh - 56px);
   padding-top: 18px;
+  padding-right: 8px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .back-link {
@@ -714,6 +718,21 @@ footer > p {
 }
 
 .rail-route a:hover {
+  color: var(--signal);
+}
+
+.rail-headings {
+  margin-top: 40px;
+}
+
+.rail-headings ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rail-headings a[aria-current="location"] {
+  border-bottom-color: var(--signal);
   color: var(--signal);
 }
 
@@ -797,6 +816,7 @@ footer > p {
 
 .article-content h2 {
   margin: 72px 0 20px;
+  scroll-margin-top: 32px;
   font-family: var(--font-display);
   font-size: clamp(34px, 4vw, 48px);
   font-weight: 400;
