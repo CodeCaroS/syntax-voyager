@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: baseUrl,
     title: {
-      default: "Syntax Voyager — Connected software knowledge",
+      default: "Syntax Voyager | Connected software knowledge",
       template: "%s · Syntax Voyager",
     },
     description,
@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: imageUrl,
           width: 1736,
           height: 907,
-          alt: "Syntax Voyager — Connected Software Knowledge",
+          alt: "Syntax Voyager: Connected Software Knowledge",
         },
       ],
     },

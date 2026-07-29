@@ -58,12 +58,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       new Map<string, Point3D>(
         articles.map((article, index) => {
           const angle = index * 1.16 - 0.65;
-          const radius = 145 + (index % 3) * 48;
+          const radius = 120 + (index % 3) * 54;
           return [
             article.id,
             {
               x: Math.cos(angle) * radius,
-              y: (index - (articles.length - 1) / 2) * 54,
+              y: (index - (articles.length - 1) / 2) * 34,
               z: Math.sin(angle) * radius,
             },
           ];
@@ -108,6 +108,19 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     let animationFrame = 0;
     let width = 0;
     let height = 0;
+    const galaxyStars = Array.from({ length: 520 }, (_, index) => {
+      const arm = index % 4;
+      const radius = 28 + ((Math.sin(index * 91.17) + 1) / 2) * 350;
+      const drift = Math.sin(index * 37.91) * 0.48;
+      const angle = arm * (Math.PI / 2) + radius * 0.018 + drift;
+      return {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(index * 143.27) * (8 + radius * 0.055),
+        z: Math.sin(angle) * radius,
+        size: index % 29 === 0 ? 2.2 : index % 7 === 0 ? 1.4 : 0.75,
+        tone: index % 13,
+      };
+    });
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -146,22 +159,24 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       view.rotationY += (view.targetY - view.rotationY) * ease;
       if (!reducedMotion && !view.dragging) view.targetY += 0.00022;
 
-      context.clearRect(0, 0, width, height);
+      context.fillStyle = "#030706";
+      context.fillRect(0, 0, width, height);
       const glow = context.createRadialGradient(
-        width * 0.54,
-        height * 0.46,
+        width * 0.5,
+        height * 0.5,
         0,
-        width * 0.54,
-        height * 0.46,
+        width * 0.5,
+        height * 0.5,
         Math.max(width, height) * 0.62,
       );
-      glow.addColorStop(0, "rgba(116, 230, 211, 0.08)");
-      glow.addColorStop(0.45, "rgba(217, 255, 85, 0.025)");
+      glow.addColorStop(0, "rgba(217, 255, 85, 0.09)");
+      glow.addColorStop(0.18, "rgba(116, 230, 211, 0.07)");
+      glow.addColorStop(0.52, "rgba(18, 56, 73, 0.08)");
       glow.addColorStop(1, "rgba(8, 16, 15, 0)");
       context.fillStyle = glow;
       context.fillRect(0, 0, width, height);
 
-      for (let index = 0; index < 90; index += 1) {
+      for (let index = 0; index < 150; index += 1) {
         const x = ((Math.sin(index * 743.13) + 1) / 2) * width;
         const y = ((Math.cos(index * 319.77) + 1) / 2) * height;
         const pulse = reducedMotion
@@ -169,6 +184,27 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           : 0.18 + ((Math.sin(time * 0.001 + index) + 1) / 2) * 0.26;
         context.fillStyle = `rgba(242, 239, 229, ${pulse})`;
         context.fillRect(x, y, index % 11 === 0 ? 1.5 : 1, index % 11 === 0 ? 1.5 : 1);
+      }
+
+      for (const star of galaxyStars) {
+        const point = project(star);
+        if (point.scale <= 0) continue;
+        const alpha = clamp(0.2 + point.scale * 0.34, 0.18, 0.82);
+        context.fillStyle =
+          star.tone === 0
+            ? `rgba(217, 255, 85, ${alpha})`
+            : star.tone < 4
+              ? `rgba(116, 230, 211, ${alpha})`
+              : `rgba(225, 235, 255, ${alpha})`;
+        context.beginPath();
+        context.arc(
+          point.x,
+          point.y,
+          clamp(star.size * point.scale, 0.45, 3.2),
+          0,
+          Math.PI * 2,
+        );
+        context.fill();
       }
 
       for (const article of articles) {
@@ -204,6 +240,21 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       for (const node of projected) {
         const selected = node.article.id === selectedId;
         const radius = clamp((selected ? 19 : 11) * node.scale, 7, 27);
+        if (selected) {
+          context.beginPath();
+          context.ellipse(
+            node.x,
+            node.y,
+            radius * 2.8,
+            radius * 1.05,
+            -0.32,
+            0,
+            Math.PI * 2,
+          );
+          context.strokeStyle = "rgba(217, 255, 85, 0.48)";
+          context.lineWidth = 1;
+          context.stroke();
+        }
         const halo = context.createRadialGradient(
           node.x,
           node.y,
@@ -334,13 +385,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         />
 
         <div className="universe-copy">
-          <p className="eyebrow">Warp search</p>
+          <p className="eyebrow">Knowledge galaxy 01</p>
           <h1 id="explore-title">
-            Navigate the logic behind <span>every line of code.</span>
+            Explore software as a <span>living galaxy.</span>
           </h1>
           <p>
-            Search a concept, warp to its node, and follow the connections that
-            make it useful.
+            Every idea is a place. Every connection is a route.
           </p>
         </div>
 

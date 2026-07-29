@@ -1104,6 +1104,196 @@ footer > p {
   }
 }
 
+/* Galaxy-first composition */
+
+.home-topbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 10;
+  border-bottom-color: rgba(242, 239, 229, 0.08);
+  background: linear-gradient(180deg, rgba(3, 7, 6, 0.84), transparent);
+}
+
+.universe-shell {
+  width: 100%;
+  min-height: 100dvh;
+  border: 0;
+  background: #030706;
+}
+
+.universe-shell::before {
+  inset: 22px;
+  border-color: rgba(242, 239, 229, 0.045);
+}
+
+.universe-copy {
+  top: 116px;
+  left: clamp(24px, 4vw, 64px);
+  width: min(430px, 34vw);
+}
+
+.universe-copy h1 {
+  font-size: clamp(42px, 4.4vw, 70px);
+  line-height: 0.94;
+  text-shadow: 0 4px 36px rgba(0, 0, 0, 0.82);
+}
+
+.universe-copy > p:last-child {
+  max-width: 330px;
+  margin-top: 18px;
+  font-size: 14px;
+}
+
+.universe-search {
+  bottom: 38px;
+  left: 50%;
+  width: min(620px, 45vw);
+  transform: translateX(-50%);
+}
+
+.universe-search > label {
+  color: #8e9c96;
+  text-align: center;
+}
+
+.node-inspector {
+  right: clamp(24px, 4vw, 64px);
+  bottom: 54px;
+  width: min(300px, 23vw);
+}
+
+.universe-controls {
+  top: 112px;
+  right: clamp(24px, 4vw, 64px);
+}
+
+.universe-status {
+  right: clamp(24px, 4vw, 64px);
+  bottom: 24px;
+}
+
+@media (max-width: 980px) {
+  .universe-copy {
+    width: min(390px, 44vw);
+  }
+
+  .universe-search {
+    left: 24px;
+    width: min(480px, 54vw);
+    transform: none;
+  }
+
+  .universe-search > label {
+    text-align: left;
+  }
+
+  .node-inspector {
+    width: min(280px, 34vw);
+  }
+}
+
+@media (max-width: 680px) {
+  .home-topbar {
+    width: calc(100% - 28px);
+    min-height: 72px;
+  }
+
+  .universe-shell {
+    display: block;
+    width: 100%;
+    min-height: 100dvh;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .universe-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  .universe-copy {
+    position: absolute;
+    top: 100px;
+    left: 20px;
+    z-index: 3;
+    width: min(340px, calc(100% - 40px));
+    padding: 0;
+  }
+
+  .universe-copy h1 {
+    font-size: clamp(40px, 12vw, 56px);
+  }
+
+  .universe-copy > p:last-child {
+    max-width: 260px;
+    font-size: 13px;
+  }
+
+  .universe-controls {
+    position: absolute;
+    top: auto;
+    right: 20px;
+    bottom: 116px;
+    left: 20px;
+    z-index: 4;
+    width: auto;
+    margin: 0;
+  }
+
+  .universe-search {
+    position: absolute;
+    right: 20px;
+    bottom: 24px;
+    left: 20px;
+    z-index: 5;
+    width: auto;
+    padding: 0;
+    transform: none;
+  }
+
+  .universe-search > label {
+    text-align: left;
+  }
+
+  .node-inspector {
+    position: absolute;
+    right: 20px;
+    bottom: 168px;
+    left: 20px;
+    z-index: 3;
+    width: auto;
+    margin: 0;
+    padding: 14px 16px;
+  }
+
+  .node-inspector p {
+    display: none;
+  }
+
+  .node-inspector h2 {
+    margin-bottom: 0;
+    font-size: 23px;
+  }
+
+  .node-inspector a {
+    margin-top: 11px;
+    padding-top: 10px;
+  }
+
+  .warp-results {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    left: 0;
+    margin: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

@@ -17,7 +17,7 @@ export default function Home() {
 
   return (
     <main>
-      <nav className="topbar" aria-label="Primary navigation">
+      <nav className="topbar home-topbar" aria-label="Primary navigation">
         <Link className="brand" href="/">
           <span className="brand-mark" aria-hidden="true">
             SV
