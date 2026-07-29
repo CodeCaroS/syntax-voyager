@@ -115,6 +115,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const [gateAnswer, setGateAnswer] = useState("");
   const [gateResult, setGateResult] = useState<GateResult>("idle");
   const [gateFeedback, setGateFeedback] = useState("");
+  const [unlockedGalaxyTitle, setUnlockedGalaxyTitle] = useState("");
+  const [galaxyEntryActive, setGalaxyEntryActive] = useState(false);
   const selectedIdRef = useRef(selectedId);
   const { progress, ready, updateProgress } = useVoyageProgress();
   const gateIndex = ready
@@ -230,6 +232,18 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     const timer = window.setTimeout(() => setJourneyPhase("cruising"), 1400);
     return () => window.clearTimeout(timer);
   }, [journeyPhase]);
+
+  useEffect(() => {
+    if (!galaxyEntryActive) return;
+    const timer = window.setTimeout(
+      () => {
+        setGalaxyEntryActive(false);
+        setJourneyPhase("arrived");
+      },
+      motionPaused || reducedMotionRef.current ? 180 : 880,
+    );
+    return () => window.clearTimeout(timer);
+  }, [galaxyEntryActive, motionPaused]);
 
   const warpTo = useCallback(
     (requestedId: string) => {
@@ -1227,6 +1241,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       return;
     }
 
+    setUnlockedGalaxyTitle(nextGalaxy.title);
     updateProgress((current) => ({
       ...current,
       passedGalaxyGates: Array.from(
@@ -1237,6 +1252,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     setGateFeedback(`Access granted. ${nextGalaxy.title} is now online.`);
     setQuery("");
     warpTo("");
+  };
+
+  const enterUnlockedGalaxy = () => {
+    gateDialogRef.current?.close();
+    if (!unlockedGalaxyTitle) return;
+    setJourneyPhase("warping");
+    setGalaxyEntryActive(true);
   };
 
   return (
@@ -1311,6 +1333,19 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
         <div className="voyage-reticle" aria-hidden="true" />
 
+        <div
+          className="galaxy-entry"
+          data-active={galaxyEntryActive}
+          data-motion={motionPaused ? "off" : "on"}
+          aria-hidden="true"
+        >
+          <span className="galaxy-entry-rift" />
+          <p>
+            <span>Event horizon crossed</span>
+            <strong>{unlockedGalaxyTitle}</strong>
+          </p>
+        </div>
+
         <button
           className="galaxy-gate"
           type="button"
@@ -1371,7 +1406,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               <p role="status">{gateFeedback}</p>
               <button
                 type="button"
-                onClick={() => gateDialogRef.current?.close()}
+                onClick={enterUnlockedGalaxy}
               >
                 Enter next galaxy
               </button>

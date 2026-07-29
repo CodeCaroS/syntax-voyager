@@ -46,6 +46,8 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
     html,
     /<button(?=[^>]*class="galaxy-gate")(?=[^>]*hidden)[^>]*>/,
   );
+  assert.match(html, /class="galaxy-entry"/);
+  assert.match(html, /Event horizon crossed/);
   assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
   assert.match(html, /Functions/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
