@@ -48,6 +48,10 @@ type JourneyPhase = "cruising" | "warping" | "arrived";
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
+const NODE_RENDER_DISTANCE = 40;
+const ROUTE_RENDER_DISTANCE = -40;
+const LABEL_RENDER_DISTANCE = -220;
+
 export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hitAreasRef = useRef<Array<{ id: string; x: number; y: number; r: number }>>(
@@ -87,16 +91,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     () =>
       new Map<string, Point3D>(
         articles.map((article, index) => {
-          const angle = index * 1.16 - 0.65;
-          const radius = 160 + (index % 3) * 72;
+          const angle = index * Math.PI * (3 - Math.sqrt(5));
+          const vertical = 1 - (2 * (index + 0.5)) / articles.length;
+          const ring = Math.sqrt(1 - vertical * vertical);
+          const shell = 200 + (index % 4) * 45;
           return [
             article.id,
             {
-              x: Math.cos(angle) * radius,
-              y:
-                Math.sin(index * 0.87) * 120 +
-                Math.cos(index * 0.41) * 35,
-              z: Math.sin(angle) * radius,
+              x: Math.cos(angle) * ring * shell,
+              y: vertical * shell * 0.72,
+              z: Math.sin(angle) * ring * shell,
             },
           ];
         }),
@@ -237,6 +241,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         y: keepVisible
           ? clamp(projectedY, 76, height - bottomMargin)
           : projectedY,
+        rawX: projectedX,
+        rawY: projectedY,
         z,
         scale,
       };
@@ -349,7 +355,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       for (const star of galaxyStars) {
         const point = project(star);
-        if (point.scale <= 0) continue;
+        if (
+          point.scale <= 0 ||
+          point.z > 240 ||
+          point.x < -24 ||
+          point.x > width + 24 ||
+          point.y < -24 ||
+          point.y > height + 24
+        ) {
+          continue;
+        }
         const alpha = clamp(0.2 + point.scale * 0.34, 0.18, 0.82);
         context.fillStyle =
           star.tone === 0
@@ -379,18 +394,51 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         }
       }
 
+      const projected = articles
+        .map((article) => {
+          const point = positions.get(article.id);
+          return point ? { article, ...project(point, true) } : null;
+        })
+        .filter((node): node is NonNullable<typeof node> => node !== null)
+        .filter((node) => {
+          const forced =
+            node.article.id === selectedIdRef.current ||
+            (warp.active && node.article.id === warp.targetId);
+          return (
+            forced ||
+            (node.z <= NODE_RENDER_DISTANCE &&
+              node.rawX > -100 &&
+              node.rawX < width + 100 &&
+              node.rawY > -100 &&
+              node.rawY < height + 100)
+          );
+        })
+        .sort((a, b) => {
+          if (a.article.id === selectedIdRef.current) return 1;
+          if (b.article.id === selectedIdRef.current) return -1;
+          return b.z - a.z;
+        });
+      const projectedById = new Map(
+        projected.map((node) => [node.article.id, node]),
+      );
+
       for (const article of articles) {
-        const target = positions.get(article.id);
-        if (!target) continue;
-        const end = project(target, true);
+        const end = projectedById.get(article.id);
+        if (!end) continue;
         for (const prerequisiteId of article.prerequisites) {
-          const source = positions.get(prerequisiteId);
-          if (!source) continue;
-          const start = project(source, true);
+          const start = projectedById.get(prerequisiteId);
+          if (!start) continue;
           const routeFocus = Math.max(
             focusLevel(article.id),
             focusLevel(prerequisiteId),
           );
+          if (
+            routeFocus < 0.01 &&
+            (start.z > ROUTE_RENDER_DISTANCE ||
+              end.z > ROUTE_RENDER_DISTANCE)
+          ) {
+            continue;
+          }
           const routeRed = Math.round(116 + 101 * routeFocus);
           const routeGreen = Math.round(230 + 25 * routeFocus);
           const routeBlue = Math.round(211 - 126 * routeFocus);
@@ -402,14 +450,6 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           context.stroke();
         }
       }
-
-      const projected = articles
-        .map((article) => {
-          const point = positions.get(article.id);
-          return point ? { article, ...project(point, true) } : null;
-        })
-        .filter((node): node is NonNullable<typeof node> => node !== null)
-        .sort((a, b) => b.z - a.z);
 
       hitAreasRef.current = [];
       for (const node of projected) {
@@ -487,7 +527,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           node.y + 0.5,
         );
 
-        if (focus > 0.01 || node.scale > 1.12) {
+        if (focus > 0.01 || node.z < LABEL_RENDER_DISTANCE) {
           const placeLabelLeft = node.x > width - 260;
           context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
           context.font = `${Math.round(400 + focus * 200)} ${13 + focus * 3}px "Segoe UI", sans-serif`;

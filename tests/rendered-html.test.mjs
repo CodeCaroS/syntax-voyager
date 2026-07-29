@@ -33,10 +33,21 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
   assert.match(html, /Previous node/);
   assert.match(html, /Next node/);
   assert.match(html, /Choose a coordinate/);
+  assert.match(html, /50(?:<!-- -->)? nodes online/);
   assert.match(html, /Interactive 3D map of programming fundamentals/);
   assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
   assert.match(html, /Functions/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
+});
+
+test("server-renders the fiftieth knowledge coordinate", async () => {
+  const response = await render("/articles/documentation-and-communication");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Documentation and Communication/);
+  assert.match(html, /Journey milestone/);
+  assert.doesNotMatch(html, /Coordinate not found/);
 });
 
 test("server-renders a static article coordinate", async () => {
