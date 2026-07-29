@@ -29,9 +29,10 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
 
   const html = await response.text();
   assert.match(html, /Syntax Voyager/);
-  assert.match(html, /Chart the logic behind/);
+  assert.match(html, /Navigate the logic behind/);
   assert.match(html, /Warp search/);
-  assert.match(html, /Algorithms (?:&amp;|&) Pseudocode/);
+  assert.match(html, /Interactive 3D map of programming fundamentals/);
+  assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
   assert.match(html, /Functions/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
