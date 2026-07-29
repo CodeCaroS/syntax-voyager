@@ -854,20 +854,31 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             );
           });
 
+          const headingAngleFor = (index: number) =>
+            index * 2.399963 +
+            (motionReduced
+              ? 0
+              : time *
+                (0.000035 + (index % 5) * 0.000009) *
+                (index % 2 === 0 ? 1 : -1));
+          const visibleHeadingLabels = new Set(
+            node.article.headings
+              .map((_, index) => ({
+                index,
+                depth: (Math.sin(headingAngleFor(index)) + 1) / 2,
+              }))
+              .sort((a, b) => b.depth - a.depth)
+              .slice(0, 2)
+              .map(({ index }) => index),
+          );
+
           node.article.headings.forEach((heading, index) => {
             const planetHue =
               (node.article.order * 23 + index * 137.508) % 360;
             const orbitX = radius * (1.85 + (index % 4) * 0.24);
             const orbitY = radius * (0.58 + (index % 5) * 0.13);
             const orbitTilt = -0.52 + (index % 6) * 0.18;
-            const orbitDirection = index % 2 === 0 ? 1 : -1;
-            const headingAngle =
-              index * 2.399963 +
-              (motionReduced
-                ? 0
-                : time *
-                  (0.000035 + (index % 5) * 0.000009) *
-                  orbitDirection);
+            const headingAngle = headingAngleFor(index);
             const localX = Math.cos(headingAngle) * orbitX;
             const localY = Math.sin(headingAngle) * orbitY;
             const cosTilt = Math.cos(orbitTilt);
@@ -971,7 +982,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               context.fill();
             }
 
-            if (depth < 0.68) return;
+            if (!visibleHeadingLabels.has(index)) return;
             const headingTitle = heading.toUpperCase();
             context.font =
               '600 9px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
