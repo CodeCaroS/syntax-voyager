@@ -201,9 +201,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const view = viewRef.current;
       const warp = warpRef.current;
       let warpIntensity = 0;
+      let warpProgress = 0;
 
       if (warp.active) {
         const progress = clamp((time - warp.startedAt) / warp.duration, 0, 1);
+        warpProgress = progress;
         const eased = 1 - Math.pow(1 - progress, 4);
         warpIntensity = reducedMotion
           ? 0
@@ -226,6 +228,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         view.rotationY += (view.targetY - view.rotationY) * ease;
         if (!reducedMotion && !view.dragging) view.targetY += 0.00022;
       }
+
+      const focusBlend =
+        warpProgress * warpProgress * (3 - 2 * warpProgress);
+      const focusLevel = (id: string) => {
+        if (warp.active && warp.targetId !== selectedIdRef.current) {
+          if (id === selectedIdRef.current) return 1 - focusBlend;
+          if (id === warp.targetId) return focusBlend;
+        }
+        return id === selectedIdRef.current ? 1 : 0;
+      };
 
       context.fillStyle = "#030706";
       context.fillRect(0, 0, width, height);
@@ -294,16 +306,18 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           const source = positions.get(prerequisiteId);
           if (!source) continue;
           const start = project(source);
-          const active =
-            article.id === selectedIdRef.current ||
-            prerequisiteId === selectedIdRef.current;
+          const routeFocus = Math.max(
+            focusLevel(article.id),
+            focusLevel(prerequisiteId),
+          );
+          const routeRed = Math.round(116 + 101 * routeFocus);
+          const routeGreen = Math.round(230 + 25 * routeFocus);
+          const routeBlue = Math.round(211 - 126 * routeFocus);
           context.beginPath();
           context.moveTo(start.x, start.y);
           context.lineTo(end.x, end.y);
-          context.strokeStyle = active
-            ? "rgba(217, 255, 85, 0.62)"
-            : "rgba(116, 230, 211, 0.18)";
-          context.lineWidth = active ? 1.4 : 0.75;
+          context.strokeStyle = `rgba(${routeRed}, ${routeGreen}, ${routeBlue}, ${0.18 + routeFocus * 0.44})`;
+          context.lineWidth = 0.75 + routeFocus * 0.65;
           context.stroke();
         }
       }
@@ -318,9 +332,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       hitAreasRef.current = [];
       for (const node of projected) {
-        const selected = node.article.id === selectedIdRef.current;
-        const radius = clamp((selected ? 19 : 11) * node.scale, 7, 27);
-        if (selected) {
+        const focus = focusLevel(node.article.id);
+        const radius = clamp((11 + focus * 8) * node.scale, 7, 27);
+        const red = Math.round(116 + 101 * focus);
+        const green = Math.round(230 + 25 * focus);
+        const blue = Math.round(211 - 126 * focus);
+        if (focus > 0.01) {
           context.beginPath();
           context.ellipse(
             node.x,
@@ -331,7 +348,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             0,
             Math.PI * 2,
           );
-          context.strokeStyle = "rgba(217, 255, 85, 0.48)";
+          context.strokeStyle = `rgba(217, 255, 85, ${focus * 0.48})`;
           context.lineWidth = 1;
           context.stroke();
         }
@@ -345,7 +362,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         );
         halo.addColorStop(
           0,
-          selected ? "rgba(217, 255, 85, 0.42)" : "rgba(116, 230, 211, 0.24)",
+          `rgba(${red}, ${green}, ${blue}, ${0.24 + focus * 0.18})`,
         );
         halo.addColorStop(1, "rgba(8, 16, 15, 0)");
         context.fillStyle = halo;
@@ -353,7 +370,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         context.arc(node.x, node.y, radius * 3.2, 0, Math.PI * 2);
         context.fill();
 
-        context.fillStyle = selected ? "#d9ff55" : "#74e6d3";
+        context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
         context.beginPath();
         context.arc(node.x, node.y, radius, 0, Math.PI * 2);
         context.fill();
@@ -368,9 +385,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           node.y + 0.5,
         );
 
-        if (selected || node.scale > 1.12) {
-          context.fillStyle = selected ? "#f2efe5" : "rgba(242, 239, 229, .72)";
-          context.font = `${selected ? 600 : 400} ${selected ? 13 : 11}px "Segoe UI", sans-serif`;
+        if (focus > 0.01 || node.scale > 1.12) {
+          context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
+          context.font = `${Math.round(400 + focus * 200)} ${11 + focus * 2}px "Segoe UI", sans-serif`;
           context.textAlign = "left";
           context.fillText(node.article.title, node.x + radius + 11, node.y - 1);
         }
