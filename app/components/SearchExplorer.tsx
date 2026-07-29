@@ -31,6 +31,17 @@ interface ViewState {
   pointerY: number;
 }
 
+interface WarpState {
+  active: boolean;
+  startedAt: number;
+  duration: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  cruiseZoom: number;
+}
+
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
@@ -49,6 +60,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     moved: false,
     pointerX: 0,
     pointerY: 0,
+  });
+  const reducedMotionRef = useRef(false);
+  const warpRef = useRef<WarpState>({
+    active: false,
+    startedAt: 0,
+    duration: 1450,
+    fromX: 0,
+    fromY: 0,
+    toX: 0,
+    toY: 0,
+    cruiseZoom: 680,
   });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
@@ -90,8 +112,33 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const position = positions.get(id);
       if (!position) return;
       const horizontalDistance = Math.hypot(position.x, position.z);
-      viewRef.current.targetY = Math.atan2(position.x, position.z);
-      viewRef.current.targetX = -Math.atan2(position.y, horizontalDistance);
+      const view = viewRef.current;
+      const toX = -Math.atan2(position.y, horizontalDistance);
+      const rawY = Math.atan2(position.x, position.z);
+      const shortestTurn = Math.atan2(
+        Math.sin(rawY - view.rotationY),
+        Math.cos(rawY - view.rotationY),
+      );
+      const toY = view.rotationY + shortestTurn;
+
+      view.targetX = toX;
+      view.targetY = toY;
+      if (reducedMotionRef.current) {
+        view.rotationX = toX;
+        view.rotationY = toY;
+        warpRef.current.active = false;
+      } else {
+        warpRef.current = {
+          active: true,
+          startedAt: performance.now(),
+          duration: 1450,
+          fromX: view.rotationX,
+          fromY: view.rotationY,
+          toX,
+          toY,
+          cruiseZoom: view.zoom,
+        };
+      }
       setSelectedId(id);
     },
     [positions],
@@ -105,6 +152,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    reducedMotionRef.current = reducedMotion;
     let animationFrame = 0;
     let width = 0;
     let height = 0;
@@ -154,10 +202,29 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
     const draw = (time: number) => {
       const view = viewRef.current;
-      const ease = reducedMotion ? 1 : 0.075;
-      view.rotationX += (view.targetX - view.rotationX) * ease;
-      view.rotationY += (view.targetY - view.rotationY) * ease;
-      if (!reducedMotion && !view.dragging) view.targetY += 0.00022;
+      const warp = warpRef.current;
+      let warpIntensity = 0;
+
+      if (warp.active) {
+        const progress = clamp((time - warp.startedAt) / warp.duration, 0, 1);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        warpIntensity = Math.pow(Math.sin(Math.PI * progress), 1.35);
+        view.rotationX = warp.fromX + (warp.toX - warp.fromX) * eased;
+        view.rotationY = warp.fromY + (warp.toY - warp.fromY) * eased;
+        view.zoom = warp.cruiseZoom - warpIntensity * 190;
+
+        if (progress >= 1) {
+          warp.active = false;
+          view.rotationX = warp.toX;
+          view.rotationY = warp.toY;
+          view.zoom = warp.cruiseZoom;
+        }
+      } else {
+        const ease = reducedMotion ? 1 : 0.075;
+        view.rotationX += (view.targetX - view.rotationX) * ease;
+        view.rotationY += (view.targetY - view.rotationY) * ease;
+        if (!reducedMotion && !view.dragging) view.targetY += 0.00022;
+      }
 
       context.fillStyle = "#030706";
       context.fillRect(0, 0, width, height);
@@ -196,15 +263,26 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             : star.tone < 4
               ? `rgba(116, 230, 211, ${alpha})`
               : `rgba(225, 235, 255, ${alpha})`;
-        context.beginPath();
-        context.arc(
-          point.x,
-          point.y,
-          clamp(star.size * point.scale, 0.45, 3.2),
-          0,
-          Math.PI * 2,
-        );
-        context.fill();
+        const starSize = clamp(star.size * point.scale, 0.45, 3.2);
+        if (warpIntensity > 0.03) {
+          const travelDistance = 0.025 + warpIntensity * 0.12;
+          context.beginPath();
+          context.moveTo(point.x, point.y);
+          context.lineTo(
+            point.x + (point.x - width / 2) * travelDistance,
+            point.y + (point.y - height / 2) * travelDistance,
+          );
+          context.strokeStyle =
+            star.tone === 0
+              ? `rgba(217, 255, 85, ${alpha * warpIntensity})`
+              : `rgba(180, 226, 255, ${alpha * warpIntensity})`;
+          context.lineWidth = starSize;
+          context.stroke();
+        } else {
+          context.beginPath();
+          context.arc(point.x, point.y, starSize, 0, Math.PI * 2);
+          context.fill();
+        }
       }
 
       for (const article of articles) {
@@ -303,6 +381,22 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         });
       }
 
+      if (warpIntensity > 0.02) {
+        const tunnel = context.createRadialGradient(
+          width / 2,
+          height / 2,
+          Math.min(width, height) * 0.06,
+          width / 2,
+          height / 2,
+          Math.max(width, height) * 0.72,
+        );
+        tunnel.addColorStop(0, `rgba(217, 255, 85, ${warpIntensity * 0.04})`);
+        tunnel.addColorStop(0.5, "rgba(3, 7, 6, 0)");
+        tunnel.addColorStop(1, `rgba(0, 3, 7, ${warpIntensity * 0.42})`);
+        context.fillStyle = tunnel;
+        context.fillRect(0, 0, width, height);
+      }
+
       animationFrame = window.requestAnimationFrame(draw);
     };
 
@@ -317,6 +411,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   }, [articles, positions, selectedId]);
 
   const rotateView = (amount: number) => {
+    warpRef.current.active = false;
     viewRef.current.targetY += amount;
   };
 
@@ -349,6 +444,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           }}
           onPointerDown={(event) => {
             const view = viewRef.current;
+            warpRef.current.active = false;
             view.dragging = true;
             view.moved = false;
             view.pointerX = event.clientX;
@@ -376,6 +472,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           }}
           onWheel={(event) => {
             event.preventDefault();
+            warpRef.current.active = false;
             viewRef.current.zoom = clamp(
               viewRef.current.zoom + event.deltaY * 0.55,
               420,
@@ -438,6 +535,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           <button
             type="button"
             onClick={() => {
+              warpRef.current.active = false;
               viewRef.current.targetX = -0.12;
               viewRef.current.targetY = -0.45;
               viewRef.current.zoom = 680;
