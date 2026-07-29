@@ -434,6 +434,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     viewRef.current.targetY += amount;
   };
 
+  const travelRelative = (direction: -1 | 1) => {
+    const currentId = warpRef.current.active
+      ? warpRef.current.targetId
+      : selectedIdRef.current;
+    const currentIndex = articles.findIndex((article) => article.id === currentId);
+    const nextIndex =
+      (Math.max(currentIndex, 0) + direction + articles.length) % articles.length;
+    setQuery("");
+    warpTo(articles[nextIndex].id);
+  };
+
   const selectAt = (x: number, y: number) => {
     const hit = hitAreasRef.current
       .slice()
@@ -443,7 +454,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   };
 
   return (
-    <section className="explorer" id="explore" aria-labelledby="explore-title">
+    <section
+      className="explorer"
+      id="explore"
+      aria-label="Interactive knowledge galaxy"
+    >
       <div className="universe-shell">
         <canvas
           ref={canvasRef}
@@ -500,15 +515,34 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           }}
         />
 
-        <div className="universe-copy">
-          <p className="eyebrow">Knowledge galaxy 01</p>
-          <h1 id="explore-title">
-            Explore software as a <span>living galaxy.</span>
-          </h1>
-          <p>
-            Every idea is a place. Every connection is a route.
-          </p>
-        </div>
+        <Link className="galaxy-wordmark" href="/">
+          <span className="brand-mark" aria-hidden="true">
+            SV
+          </span>
+          <span>
+            <strong>Syntax Voyager</strong>
+            <small>{articles.length.toString().padStart(2, "0")} nodes online</small>
+          </span>
+        </Link>
+
+        <nav className="navigator-steps" aria-label="Knowledge navigator">
+          <button
+            type="button"
+            onClick={() => travelRelative(-1)}
+            aria-label="Previous node"
+          >
+            <span aria-hidden="true">←</span>
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => travelRelative(1)}
+            aria-label="Next node"
+          >
+            Next
+            <span aria-hidden="true">→</span>
+          </button>
+        </nav>
 
         <div className="universe-search">
           <label htmlFor="warp-search">Choose a coordinate</label>
@@ -532,7 +566,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             <div className="warp-results" aria-label="Search results">
               {results.length > 0 ? (
                 results.slice(0, 4).map((article) => (
-                  <button type="button" key={article.id} onClick={() => warpTo(article.id)}>
+                  <button
+                    type="button"
+                    key={article.id}
+                    onClick={() => {
+                      setQuery("");
+                      warpTo(article.id);
+                    }}
+                  >
                     <span>{article.order.toString().padStart(2, "0")}</span>
                     {article.title}
                   </button>
@@ -577,52 +618,6 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           </aside>
         ) : null}
 
-        <div className="universe-status" aria-hidden="true">
-          <span>{articles.length.toString().padStart(2, "0")} nodes online</span>
-          <span>Drag to orbit</span>
-          <span>Scroll to zoom</span>
-        </div>
-      </div>
-
-      <div className="atlas" id="atlas">
-        <div className="atlas-heading">
-          <p className="eyebrow">Knowledge atlas</p>
-          <h2>Every mapped coordinate.</h2>
-          <p>
-            Prefer a traditional route? Open any lesson directly or follow the
-            prerequisites in order.
-          </p>
-        </div>
-        <div className="node-grid">
-          {articles.map((article) => (
-            <Link className="node-card" href={`/articles/${article.id}`} key={article.id}>
-              <div className="node-card-top">
-                <span className="node-number">
-                  {article.order.toString().padStart(2, "0")}
-                </span>
-                <span className="node-status">
-                  <span aria-hidden="true" />
-                  online
-                </span>
-              </div>
-              <h3>{article.title}</h3>
-              <p>{article.summary}</p>
-              <div className="node-card-meta">
-                <span>{article.level}</span>
-                <span>
-                  {article.prerequisites.length === 0
-                    ? "entry point"
-                    : `${article.prerequisites.length} prerequisite${
-                        article.prerequisites.length === 1 ? "" : "s"
-                      }`}
-                </span>
-                <span className="node-arrow" aria-hidden="true">
-                  ↗
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
       </div>
     </section>
   );
