@@ -1315,6 +1315,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           className="galaxy-gate"
           type="button"
           data-complete={!activeGate}
+          hidden={Boolean(selectedId) || journeyPhase === "warping"}
           disabled={!ready}
           onClick={openGalaxyGate}
           aria-label={

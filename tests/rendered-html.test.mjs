@@ -38,6 +38,10 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
   assert.match(html, /Connected coordinates/);
   assert.match(html, /Mission ctrl/);
   assert.match(html, /Interactive 3D map of connected software knowledge/);
+  assert.match(
+    html,
+    /<button(?=[^>]*class="galaxy-gate")(?=[^>]*hidden)[^>]*>/,
+  );
   assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
   assert.match(html, /Functions/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
