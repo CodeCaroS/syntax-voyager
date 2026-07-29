@@ -14,6 +14,7 @@ export interface SearchArticle {
   relations: Array<{ target: string; type: string }>;
   searchText: string;
   galaxy: string;
+  headings: string[];
 }
 
 interface Point3D {
@@ -55,7 +56,6 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 
 const NODE_RENDER_DISTANCE = 240;
 const ROUTE_RENDER_DISTANCE = 185;
-const LABEL_RENDER_DISTANCE = 115;
 const GALAXY_COLORS: Record<string, readonly [number, number, number]> = {
   "Origin sector": [217, 255, 85],
   "Systems frontier": [86, 221, 255],
@@ -824,119 +824,104 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         context.fill();
 
         context.fillStyle = "#08100f";
-        context.font = `700 ${clamp(9 * node.scale, 7, 12)}px "Cascadia Code", monospace`;
         context.textAlign = "center";
         context.textBaseline = "middle";
-        context.fillText(
-          node.article.order.toString().padStart(2, "0"),
-          node.x,
-          node.y + 0.5,
-        );
-
-        if (focus > 0.01 || node.z < LABEL_RENDER_DISTANCE) {
+        if (focus > 0.6) {
           const title = node.article.title.toUpperCase();
-          const orbitAngle =
-            node.article.order * 2.399963 +
-            (motionReduced
-              ? 0
-              : time * 0.00028 * (node.article.order % 2 ? 1 : -1));
-          const orbitX = radius * 1.9 + (focus > 0.6 ? 42 : 18);
-          const orbitY = radius * 0.82 + (focus > 0.6 ? 22 : 10);
-          const planetX = node.x + Math.cos(orbitAngle) * orbitX;
-          const planetY = node.y + Math.sin(orbitAngle) * orbitY;
-          const planetRadius = clamp(
-            (focus > 0.6 ? 10 : 6) * node.scale,
-            5,
-            13,
+          const titleBreak = title.lastIndexOf(
+            " ",
+            Math.ceil(title.length / 2),
           );
+          const titleLines =
+            titleBreak > 0
+              ? [title.slice(0, titleBreak), title.slice(titleBreak + 1)]
+              : [title];
+          context.font =
+            '700 10px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
+          context.fillText(
+            node.article.order.toString().padStart(2, "0"),
+            node.x,
+            node.y - 17,
+          );
+          context.font =
+            '700 13px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
+          titleLines.forEach((line, index) => {
+            context.fillText(
+              line,
+              node.x,
+              node.y + 3 + index * 15,
+              radius * 1.62,
+            );
+          });
 
+          const headingOrbitX = radius * 2.65;
+          const headingOrbitY = radius * 1.18;
+          const headingRotation = motionReduced ? 0 : time * 0.00008;
           context.beginPath();
           context.ellipse(
             node.x,
             node.y,
-            orbitX,
-            orbitY,
-            0,
-            0,
-            Math.PI * 2,
-          );
-          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.22 + focus * 0.28})`;
-          context.lineWidth = 1;
-          context.stroke();
-
-          context.save();
-          context.shadowColor = `rgb(${red}, ${green}, ${blue})`;
-          context.shadowBlur = focus > 0.6 ? 20 : 12;
-          context.translate(planetX, planetY);
-          context.rotate(-0.32);
-          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.72)`;
-          context.lineWidth = 1;
-          context.beginPath();
-          context.ellipse(
-            0,
-            0,
-            planetRadius * 1.8,
-            planetRadius * 0.55,
-            0,
+            headingOrbitX,
+            headingOrbitY,
+            -0.18,
             0,
             Math.PI * 2,
           );
-          context.stroke();
-          context.restore();
-
-          const titlePlanet = context.createRadialGradient(
-            planetX - planetRadius * 0.35,
-            planetY - planetRadius * 0.4,
-            planetRadius * 0.08,
-            planetX,
-            planetY,
-            planetRadius,
-          );
-          titlePlanet.addColorStop(0, "#fffff0");
-          titlePlanet.addColorStop(
-            0.28,
-            `rgb(${Math.round((red + 255) / 2)}, ${Math.round((green + 255) / 2)}, ${Math.round((blue + 255) / 2)})`,
-          );
-          titlePlanet.addColorStop(
-            1,
-            `rgb(${Math.round(red * 0.5)}, ${Math.round(green * 0.5)}, ${Math.round(blue * 0.5)})`,
-          );
-          context.fillStyle = titlePlanet;
-          context.beginPath();
-          context.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
-          context.fill();
-
-          context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
-          context.font = `${Math.round(500 + focus * 100)} ${focus > 0.6 ? 13 : 11 + focus * 2}px "Cascadia Code", "SFMono-Regular", Consolas, monospace`;
-          const titleWidth = context.measureText(title).width;
-          const rightBoundary = width <= 680 ? width - 16 : width - 380;
-          let placeLabelRight = Math.cos(orbitAngle) >= 0;
-          if (planetX + planetRadius + 8 + titleWidth > rightBoundary) {
-            placeLabelRight = false;
-          }
-          if (planetX - planetRadius - 8 - titleWidth < 16) {
-            placeLabelRight = true;
-          }
-          const titleX =
-            planetX + (placeLabelRight ? planetRadius + 10 : -planetRadius - 10);
-          const titleHeight = focus > 0.6 ? 24 : 20;
-          context.beginPath();
-          context.roundRect(
-            placeLabelRight ? titleX - 6 : titleX - titleWidth - 6,
-            planetY - titleHeight / 2,
-            titleWidth + 12,
-            titleHeight,
-            titleHeight / 2,
-          );
-          context.fillStyle = "rgba(3, 7, 6, 0.84)";
-          context.fill();
-          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.58)`;
-          context.lineWidth = 0.8;
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.38)`;
+          context.lineWidth = 1;
           context.stroke();
 
-          context.fillStyle = `rgba(242, 239, 229, ${0.82 + focus * 0.18})`;
-          context.textAlign = placeLabelRight ? "left" : "right";
-          context.fillText(title, titleX, planetY);
+          node.article.headings.forEach((heading, index) => {
+            const headingAngle =
+              headingRotation +
+              (index / node.article.headings.length) * Math.PI * 2;
+            const planetX =
+              node.x + Math.cos(headingAngle) * headingOrbitX;
+            const planetY =
+              node.y + Math.sin(headingAngle) * headingOrbitY;
+            const depth = (Math.sin(headingAngle) + 1) / 2;
+            const planetRadius = 4 + depth * 4;
+
+            context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+            context.beginPath();
+            context.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
+            context.fill();
+
+            if (depth < 0.68) return;
+            const headingTitle = heading.toUpperCase();
+            context.font =
+              '600 9px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
+            const headingWidth = context.measureText(headingTitle).width;
+            const placeHeadingRight = planetX < node.x;
+            const headingX =
+              planetX +
+              (placeHeadingRight ? planetRadius + 7 : -planetRadius - 7);
+            context.beginPath();
+            context.roundRect(
+              placeHeadingRight
+                ? headingX - 5
+                : headingX - headingWidth - 5,
+              planetY - 9,
+              headingWidth + 10,
+              18,
+              9,
+            );
+            context.fillStyle = "rgba(3, 7, 6, 0.86)";
+            context.fill();
+            context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.52)`;
+            context.lineWidth = 0.8;
+            context.stroke();
+            context.fillStyle = "rgba(242, 239, 229, 0.9)";
+            context.textAlign = placeHeadingRight ? "left" : "right";
+            context.fillText(headingTitle, headingX, planetY);
+          });
+        } else {
+          context.font = `700 ${clamp(9 * node.scale, 7, 12)}px "Cascadia Code", monospace`;
+          context.fillText(
+            node.article.order.toString().padStart(2, "0"),
+            node.x,
+            node.y + 0.5,
+          );
         }
 
         hitAreasRef.current.push({
