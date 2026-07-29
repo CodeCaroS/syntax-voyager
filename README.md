@@ -35,6 +35,14 @@ Useful checks:
 npm run build
 npm run lint
 npm test
+npm run test:e2e
+```
+
+On Windows, if Node reports `EPERM` while resolving the OneDrive root, run the
+same check through the included mapped-drive helper:
+
+```powershell
+.\scripts\run-node-safe.ps1 -NpmScript test
 ```
 
 `npm run content:build` validates every Markdown article and regenerates the
