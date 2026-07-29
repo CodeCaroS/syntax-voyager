@@ -40,6 +40,7 @@ interface WarpState {
   toX: number;
   toY: number;
   cruiseZoom: number;
+  targetId: string;
 }
 
 const clamp = (value: number, minimum: number, maximum: number) =>
@@ -71,6 +72,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     toX: 0,
     toY: 0,
     cruiseZoom: 680,
+    targetId: "",
   });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
@@ -113,7 +115,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       if (!position) return;
       const horizontalDistance = Math.hypot(position.x, position.z);
       const view = viewRef.current;
-      const toX = -Math.atan2(position.y, horizontalDistance);
+      const toX = Math.atan2(position.y, horizontalDistance);
       const rawY = Math.atan2(position.x, position.z);
       const shortestTurn = Math.atan2(
         Math.sin(rawY - view.rotationY),
@@ -127,6 +129,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         view.rotationX = toX;
         view.rotationY = toY;
         warpRef.current.active = false;
+        setSelectedId(id);
       } else {
         warpRef.current = {
           active: true,
@@ -137,9 +140,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           toX,
           toY,
           cruiseZoom: view.zoom,
+          targetId: id,
         };
       }
-      setSelectedId(id);
     },
     [positions],
   );
@@ -218,6 +221,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           view.rotationX = warp.toX;
           view.rotationY = warp.toY;
           view.zoom = warp.cruiseZoom;
+          setSelectedId(warp.targetId);
         }
       } else {
         const ease = reducedMotion ? 1 : 0.075;
