@@ -1547,7 +1547,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               <span>Node profile</span>
               <strong>
                 {selectedArticle.order.toString().padStart(2, "0")} /{" "}
-                {navigableArticles.length.toString().padStart(2, "0")}
+                {articles.length.toString().padStart(2, "0")}
               </strong>
             </header>
             <h2>{selectedArticle.title}</h2>
