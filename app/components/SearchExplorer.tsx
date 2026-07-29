@@ -80,6 +80,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
   const [journeyPhase, setJourneyPhase] = useState<JourneyPhase>("cruising");
+  const [motionPaused, setMotionPaused] = useState(false);
   const selectedIdRef = useRef(selectedId);
 
   const positions = useMemo(
@@ -161,6 +162,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       "(prefers-reduced-motion: reduce)",
     ).matches;
     reducedMotionRef.current = reducedMotion;
+    setMotionPaused(reducedMotion);
     let animationFrame = 0;
     let width = 0;
     let height = 0;
@@ -235,6 +237,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     const draw = (time: number) => {
       const view = viewRef.current;
       const warp = warpRef.current;
+      const motionReduced = reducedMotionRef.current;
       const frameDuration =
         previousFrameTime === 0 ? 0 : Math.min(time - previousFrameTime, 32);
       previousFrameTime = time;
@@ -248,7 +251,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           progress < 0.5
             ? 8 * Math.pow(progress, 4)
             : 1 - Math.pow(-2 * progress + 2, 4) / 2;
-        warpIntensity = reducedMotion
+        warpIntensity = motionReduced
           ? 0
           : Math.pow(Math.sin(Math.PI * progress), 0.82);
         view.rotationX = warp.fromX + (warp.toX - warp.fromX) * eased;
@@ -266,10 +269,10 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           setJourneyPhase("arrived");
         }
       } else {
-        const ease = reducedMotion ? 1 : 0.075;
+        const ease = motionReduced ? 1 : 0.075;
         view.rotationX += (view.targetX - view.rotationX) * ease;
         view.rotationY += (view.targetY - view.rotationY) * ease;
-        if (!reducedMotion && !view.dragging) {
+        if (!motionReduced && !view.dragging) {
           view.targetY += 0.0013;
           const orbitHeight = -0.12 + Math.sin(time * 0.00022) * 0.09;
           view.targetX += (orbitHeight - view.targetX) * 0.002;
@@ -277,10 +280,10 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       }
       flightDistance +=
         frameDuration *
-        (reducedMotion ? 0 : 0.00013 + warpIntensity * 0.0004);
+        (motionReduced ? 0 : 0.00013 + warpIntensity * 0.0004);
       orbitPhase +=
         frameDuration *
-        (reducedMotion ? 0 : 0.00012 + warpIntensity * 0.00008);
+        (motionReduced ? 0 : 0.00012 + warpIntensity * 0.00008);
 
       const focusBlend =
         warpProgress * warpProgress * (3 - 2 * warpProgress);
@@ -318,7 +321,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const directionY = Math.sin(angle);
         const x = width / 2 + directionX * distance;
         const y = height / 2 + directionY * distance;
-        const pulse = reducedMotion
+        const pulse = motionReduced
           ? 0.28
           : 0.12 +
             ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
@@ -408,7 +411,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             ? time - arrivalRef.current.startedAt
             : Number.POSITIVE_INFINITY;
         const arrivalPulse =
-          reducedMotion || arrivalAge > 1200
+          motionReduced || arrivalAge > 1200
             ? 0
             : 1 - clamp(arrivalAge / 1200, 0, 1);
         const radius = clamp((11 + focus * 8) * node.scale, 7, 27);
@@ -724,6 +727,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             }}
           >
             Reset
+          </button>
+          <button
+            type="button"
+            aria-pressed={!motionPaused}
+            onClick={() => {
+              reducedMotionRef.current = !motionPaused;
+              setMotionPaused(!motionPaused);
+            }}
+          >
+            Flight {motionPaused ? "off" : "on"}
           </button>
         </div>
 
