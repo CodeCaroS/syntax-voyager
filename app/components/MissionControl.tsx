@@ -7,6 +7,7 @@ import {
   flightPlans,
   galaxies,
   galaxyForOrder,
+  type GalaxyId,
 } from "@/lib/voyage";
 import { useVoyageProgress } from "./useVoyageProgress";
 
@@ -22,6 +23,11 @@ function unique(values: string[]) {
   return [...new Set(values)];
 }
 
+const totalExpeditionSteps = expeditions.reduce(
+  (total, expedition) => total + expedition.steps.length,
+  0,
+);
+
 export default function MissionControl({
   articles,
 }: {
@@ -30,24 +36,40 @@ export default function MissionControl({
   const { progress, ready, updateProgress, resetProgress } =
     useVoyageProgress();
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [expandedGalaxyIds, setExpandedGalaxyIds] = useState<GalaxyId[]>([]);
 
   const articleById = useMemo(
     () => new Map(articles.map((article) => [article.id, article])),
     [articles],
   );
+  const galaxyNodes = useMemo(
+    () =>
+      galaxies.map((galaxy) => ({
+        galaxy,
+        nodes: articles.filter(
+          (article) => galaxyForOrder(article.order).id === galaxy.id,
+        ),
+      })),
+    [articles],
+  );
+  const masteredIds = useMemo(
+    () => new Set(progress.masteredArticleIds),
+    [progress.masteredArticleIds],
+  );
   const activePlan =
     flightPlans.find((plan) => plan.id === progress.activePlanId) ??
     flightPlans[0];
   const planMastered = activePlan.articleIds.filter((id) =>
-    progress.masteredArticleIds.includes(id),
+    masteredIds.has(id),
   ).length;
-  const totalExpeditionSteps = expeditions.reduce(
-    (total, expedition) => total + expedition.steps.length,
-    0,
+  const completedExpeditionSteps = useMemo(
+    () =>
+      Object.values(progress.completedExpeditionSteps).reduce(
+        (total, steps) => total + steps.length,
+        0,
+      ),
+    [progress.completedExpeditionSteps],
   );
-  const completedExpeditionSteps = Object.values(
-    progress.completedExpeditionSteps,
-  ).reduce((total, steps) => total + steps.length, 0);
 
   const toggleExpeditionStep = (expeditionId: string, stepId: string) => {
     updateProgress((current) => {
@@ -123,18 +145,13 @@ export default function MissionControl({
           </p>
         </div>
         <div className="galaxy-manifest">
-          {galaxies.map((galaxy) => {
-            const nodes = articles.filter(
-              (article) => galaxyForOrder(article.order).id === galaxy.id,
-            );
+          {galaxyNodes.map(({ galaxy, nodes }) => {
             const mastered = nodes.filter((article) =>
-              progress.masteredArticleIds.includes(article.id),
+              masteredIds.has(article.id),
             ).length;
             const nextNode =
-              nodes.find(
-                (article) =>
-                  !progress.masteredArticleIds.includes(article.id),
-              ) ?? nodes[0];
+              nodes.find((article) => !masteredIds.has(article.id)) ?? nodes[0];
+            const expanded = expandedGalaxyIds.includes(galaxy.id);
 
             return (
               <article key={galaxy.id}>
@@ -153,29 +170,42 @@ export default function MissionControl({
                 >
                   <span
                     style={{
-                      width: `${nodes.length ? (mastered / nodes.length) * 100 : 0}%`,
+                      transform: `scaleX(${
+                        nodes.length ? mastered / nodes.length : 0
+                      })`,
                     }}
                   />
                 </div>
-                <details className="sector-manifest">
-                  <summary>Coordinate manifest</summary>
-                  <ol>
-                    {nodes.map((article) => (
-                      <li
-                        data-complete={progress.masteredArticleIds.includes(
-                          article.id,
-                        )}
-                        key={article.id}
-                      >
-                        <span>
-                          {article.order.toString().padStart(2, "0")}
-                        </span>
-                        <Link href={`/articles/${article.id}`}>
-                          {article.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ol>
+                <details className="sector-manifest" open={expanded}>
+                  <summary
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setExpandedGalaxyIds((current) =>
+                        current.includes(galaxy.id)
+                          ? current.filter((id) => id !== galaxy.id)
+                          : [...current, galaxy.id],
+                      );
+                    }}
+                  >
+                    Coordinate manifest
+                  </summary>
+                  {expanded ? (
+                    <ol>
+                      {nodes.map((article) => (
+                        <li
+                          data-complete={masteredIds.has(article.id)}
+                          key={article.id}
+                        >
+                          <span>
+                            {article.order.toString().padStart(2, "0")}
+                          </span>
+                          <Link href={`/articles/${article.id}`}>
+                            {article.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
                 </details>
                 {nextNode ? (
                   <Link href={`/articles/${nextNode.id}`}>
@@ -233,8 +263,7 @@ export default function MissionControl({
           <ol>
             {activePlan.articleIds.map((articleId, index) => {
               const article = articleById.get(articleId);
-              const mastered =
-                progress.masteredArticleIds.includes(articleId);
+              const mastered = masteredIds.has(articleId);
               return article ? (
                 <li data-complete={mastered} key={articleId}>
                   <span>{(index + 1).toString().padStart(2, "0")}</span>
@@ -310,7 +339,9 @@ export default function MissionControl({
                   >
                     <span
                       style={{
-                        width: `${(completed.length / expedition.steps.length) * 100}%`,
+                        transform: `scaleX(${
+                          completed.length / expedition.steps.length
+                        })`,
                       }}
                     />
                   </div>

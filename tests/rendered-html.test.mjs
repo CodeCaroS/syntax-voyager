@@ -95,6 +95,11 @@ test("server-renders mission control with galaxies, routes, and expeditions", as
   assert.match(html, /Origin sector/);
   assert.match(html, /Reliability commander/);
   assert.match(html, /Decode the guessing signal/);
+  assert.match(html, /Coordinate manifest/);
+  assert.doesNotMatch(
+    html,
+    /href="\/articles\/documentation-and-communication"/,
+  );
 });
 
 test("server-renders the interactive pseudocode simulation deck", async () => {
