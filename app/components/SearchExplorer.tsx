@@ -854,45 +854,135 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             );
           });
 
-          const headingOrbitX = radius * 2.65;
-          const headingOrbitY = radius * 1.18;
-          const headingRotation = motionReduced ? 0 : time * 0.00008;
-          context.beginPath();
-          context.ellipse(
-            node.x,
-            node.y,
-            headingOrbitX,
-            headingOrbitY,
-            -0.18,
-            0,
-            Math.PI * 2,
-          );
-          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.38)`;
-          context.lineWidth = 1;
-          context.stroke();
-
           node.article.headings.forEach((heading, index) => {
+            const planetHue =
+              (node.article.order * 23 + index * 137.508) % 360;
+            const orbitX = radius * (1.85 + (index % 4) * 0.24);
+            const orbitY = radius * (0.58 + (index % 5) * 0.13);
+            const orbitTilt = -0.52 + (index % 6) * 0.18;
+            const orbitDirection = index % 2 === 0 ? 1 : -1;
             const headingAngle =
-              headingRotation +
-              (index / node.article.headings.length) * Math.PI * 2;
-            const planetX =
-              node.x + Math.cos(headingAngle) * headingOrbitX;
-            const planetY =
-              node.y + Math.sin(headingAngle) * headingOrbitY;
+              index * 2.399963 +
+              (motionReduced
+                ? 0
+                : time *
+                  (0.000035 + (index % 5) * 0.000009) *
+                  orbitDirection);
+            const localX = Math.cos(headingAngle) * orbitX;
+            const localY = Math.sin(headingAngle) * orbitY;
+            const cosTilt = Math.cos(orbitTilt);
+            const sinTilt = Math.sin(orbitTilt);
+            const planetX = node.x + localX * cosTilt - localY * sinTilt;
+            const planetY = node.y + localX * sinTilt + localY * cosTilt;
             const depth = (Math.sin(headingAngle) + 1) / 2;
-            const planetRadius = 4 + depth * 4;
+            const planetRadius = 4.5 + (index % 4) * 0.8 + depth * 2.5;
 
-            context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+            context.save();
+            context.translate(node.x, node.y);
+            context.rotate(orbitTilt);
+            context.beginPath();
+            context.ellipse(0, 0, orbitX, orbitY, 0, 0, Math.PI * 2);
+            context.strokeStyle = `hsla(${planetHue}, 82%, 68%, 0.16)`;
+            context.lineWidth = 0.7 + (index % 3) * 0.15;
+            context.stroke();
+            context.restore();
+
+            const planetFill = context.createRadialGradient(
+              planetX - planetRadius * 0.35,
+              planetY - planetRadius * 0.4,
+              planetRadius * 0.08,
+              planetX,
+              planetY,
+              planetRadius,
+            );
+            planetFill.addColorStop(
+              0,
+              `hsl(${planetHue}, 96%, 92%)`,
+            );
+            planetFill.addColorStop(
+              0.34,
+              `hsl(${planetHue}, 86%, 62%)`,
+            );
+            planetFill.addColorStop(
+              1,
+              `hsl(${planetHue}, 68%, 22%)`,
+            );
+
+            context.save();
+            context.shadowColor = `hsl(${planetHue}, 88%, 62%)`;
+            context.shadowBlur = 5 + depth * 9;
+            context.fillStyle = planetFill;
             context.beginPath();
             context.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
             context.fill();
+            context.restore();
+
+            if (index % 4 === 0) {
+              context.save();
+              context.translate(planetX, planetY);
+              context.rotate(orbitTilt - 0.28);
+              context.beginPath();
+              context.ellipse(
+                0,
+                0,
+                planetRadius * 1.8,
+                planetRadius * 0.48,
+                0,
+                0,
+                Math.PI * 2,
+              );
+              context.strokeStyle = `hsla(${planetHue}, 92%, 78%, 0.72)`;
+              context.lineWidth = 1;
+              context.stroke();
+              context.restore();
+            } else if (index % 4 === 1) {
+              context.fillStyle = `hsla(${planetHue}, 70%, 18%, 0.58)`;
+              context.beginPath();
+              context.arc(
+                planetX - planetRadius * 0.25,
+                planetY + planetRadius * 0.18,
+                planetRadius * 0.2,
+                0,
+                Math.PI * 2,
+              );
+              context.fill();
+            } else if (index % 4 === 2) {
+              context.beginPath();
+              context.arc(
+                planetX,
+                planetY,
+                planetRadius * 1.35,
+                0,
+                Math.PI * 2,
+              );
+              context.strokeStyle = `hsla(${planetHue}, 96%, 82%, 0.46)`;
+              context.lineWidth = 1.3;
+              context.stroke();
+            } else {
+              context.fillStyle = `hsl(${(planetHue + 42) % 360}, 76%, 72%)`;
+              context.beginPath();
+              context.arc(
+                planetX + planetRadius * 1.75,
+                planetY - planetRadius * 0.9,
+                planetRadius * 0.32,
+                0,
+                Math.PI * 2,
+              );
+              context.fill();
+            }
 
             if (depth < 0.68) return;
             const headingTitle = heading.toUpperCase();
             context.font =
               '600 9px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
             const headingWidth = context.measureText(headingTitle).width;
-            const placeHeadingRight = planetX < node.x;
+            let placeHeadingRight = planetX >= node.x;
+            if (
+              placeHeadingRight &&
+              planetX + planetRadius + headingWidth > width - 380
+            ) {
+              placeHeadingRight = false;
+            }
             const headingX =
               planetX +
               (placeHeadingRight ? planetRadius + 7 : -planetRadius - 7);
@@ -908,7 +998,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             );
             context.fillStyle = "rgba(3, 7, 6, 0.86)";
             context.fill();
-            context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.52)`;
+            context.strokeStyle = `hsla(${planetHue}, 88%, 68%, 0.64)`;
             context.lineWidth = 0.8;
             context.stroke();
             context.fillStyle = "rgba(242, 239, 229, 0.9)";
