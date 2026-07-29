@@ -1,5 +1,6 @@
 "use client";
 
+import { galaxies, type GalaxyId } from "@/lib/voyage";
 import { useCallback, useEffect, useState } from "react";
 
 export interface VoyageProgress {
@@ -8,6 +9,7 @@ export interface VoyageProgress {
   masteredArticleIds: string[];
   completedExpeditionSteps: Record<string, string[]>;
   passedLabChallenges: string[];
+  passedGalaxyGates: GalaxyId[];
 }
 
 const STORAGE_KEY = "syntax-voyager:flight-log:v1";
@@ -19,9 +21,11 @@ export const emptyVoyageProgress: VoyageProgress = {
   masteredArticleIds: [],
   completedExpeditionSteps: {},
   passedLabChallenges: [],
+  passedGalaxyGates: [],
 };
 
 function normalizeProgress(value: Partial<VoyageProgress>): VoyageProgress {
+  const galaxyIds = new Set(galaxies.map((galaxy) => galaxy.id));
   return {
     activePlanId: value.activePlanId || emptyVoyageProgress.activePlanId,
     visitedArticleIds: Array.isArray(value.visitedArticleIds)
@@ -37,6 +41,11 @@ function normalizeProgress(value: Partial<VoyageProgress>): VoyageProgress {
         : {},
     passedLabChallenges: Array.isArray(value.passedLabChallenges)
       ? value.passedLabChallenges
+      : [],
+    passedGalaxyGates: Array.isArray(value.passedGalaxyGates)
+      ? Array.from(
+          new Set(value.passedGalaxyGates.filter((id) => galaxyIds.has(id))),
+        )
       : [],
   };
 }

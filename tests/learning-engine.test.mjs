@@ -13,6 +13,7 @@ import {
   expeditions,
   flightPlans,
   galaxies,
+  galaxyGates,
   labChallenges,
 } from "../lib/voyage.ts";
 
@@ -30,6 +31,14 @@ test("every article belongs to exactly one knowledge galaxy", () => {
       `${article.id} belongs to ${matches.length} galaxies`,
     );
   }
+});
+
+test("each galaxy transition has a valid black hole gate", () => {
+  assert.equal(galaxyGates.length, galaxies.length - 1);
+  galaxyGates.forEach((gate, index) => {
+    assert.equal(gate.galaxyId, galaxies[index].id);
+    assert.ok(gate.answers.includes(gate.correctAnswer));
+  });
 });
 
 test("flight plans and expedition article checkpoints use real coordinates", () => {

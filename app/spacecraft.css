@@ -110,6 +110,253 @@ input,
   box-shadow: 0 0 12px rgba(255, 93, 87, 0.72);
 }
 
+.galaxy-gate {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 164px;
+  height: 164px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.galaxy-gate:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
+.galaxy-gate:focus-visible {
+  outline: 1px solid var(--signal);
+  outline-offset: 8px;
+}
+
+.galaxy-gate-singularity,
+.galaxy-gate-singularity::after,
+.galaxy-gate-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.galaxy-gate-singularity {
+  width: 58px;
+  height: 58px;
+  background: radial-gradient(
+    circle at 42% 36%,
+    #0d1716 0 12%,
+    #020303 38%,
+    #000 72%
+  );
+  box-shadow:
+    0 0 0 1px rgba(228, 241, 239, 0.15),
+    0 0 30px 5px rgba(99, 230, 209, 0.18);
+  transition:
+    box-shadow 240ms ease,
+    transform 240ms ease;
+}
+
+.galaxy-gate-singularity::after {
+  inset: -14px;
+  border: 1px solid rgba(228, 241, 239, 0.14);
+  content: "";
+}
+
+.galaxy-gate-ring {
+  width: 126px;
+  height: 38px;
+  border: 2px solid rgba(99, 230, 209, 0.7);
+  border-right-color: rgba(255, 93, 87, 0.2);
+  border-left-color: rgba(217, 255, 85, 0.2);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(99, 230, 209, 0.18);
+  transform: rotate(-12deg);
+  animation: galaxy-gate-orbit 12s linear infinite;
+}
+
+.galaxy-gate:hover .galaxy-gate-singularity,
+.galaxy-gate:focus-visible .galaxy-gate-singularity {
+  box-shadow:
+    0 0 0 1px rgba(228, 241, 239, 0.28),
+    0 0 42px 8px rgba(99, 230, 209, 0.28);
+  transform: scale(1.08);
+}
+
+.galaxy-gate[data-complete="true"] .galaxy-gate-ring {
+  border-color: rgba(217, 255, 85, 0.64);
+}
+
+.galaxy-gate-label {
+  position: absolute;
+  top: calc(50% + 64px);
+  display: grid;
+  gap: 4px;
+  width: 170px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.galaxy-gate-label strong {
+  color: var(--paper);
+  font: 700 9px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+.galaxy-gate-label small {
+  color: var(--signal);
+  font: 7px/1 var(--font-mono);
+  letter-spacing: 0.07em;
+}
+
+.galaxy-gate-dialog {
+  width: min(520px, calc(100% - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--signal);
+  background: #07100f;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.68);
+  color: var(--paper);
+}
+
+.galaxy-gate-dialog::backdrop {
+  background: rgba(0, 3, 4, 0.82);
+}
+
+.galaxy-gate-dialog > header {
+  padding: 28px 28px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.galaxy-gate-dialog > header span {
+  color: var(--signal);
+  font: 8px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.galaxy-gate-dialog h2 {
+  margin: 10px 42px 0 0;
+  color: var(--paper);
+  font: 700 clamp(24px, 5vw, 38px) / 1 var(--font-mono);
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.galaxy-gate-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+  font: 18px/1 var(--font-mono);
+}
+
+.galaxy-gate-close:hover,
+.galaxy-gate-close:focus-visible {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.galaxy-gate-dialog form,
+.galaxy-gate-complete,
+.galaxy-gate-feedback[data-result="passed"] {
+  padding: 26px 28px 28px;
+}
+
+.galaxy-gate-dialog fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.galaxy-gate-dialog legend {
+  max-width: 36ch;
+  margin-bottom: 20px;
+  color: var(--paper);
+  font: 600 15px/1.45 var(--font-sans);
+}
+
+.galaxy-gate-dialog label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.galaxy-gate-dialog label:last-of-type {
+  border-bottom: 1px solid var(--line);
+}
+
+.galaxy-gate-dialog label:has(input:checked) {
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+
+.galaxy-gate-dialog input {
+  accent-color: var(--signal);
+}
+
+.galaxy-gate-dialog form > button,
+.galaxy-gate-feedback[data-result="passed"] button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 22px;
+  border: 1px solid var(--signal);
+  background: var(--signal);
+  color: #04100e;
+  cursor: pointer;
+  font: 700 9px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.galaxy-gate-dialog form > button:disabled {
+  border-color: var(--line);
+  background: #14201e;
+  color: #6f8581;
+  cursor: not-allowed;
+}
+
+.galaxy-gate-feedback,
+.galaxy-gate-complete p {
+  margin: 16px 0 0;
+  color: #a8bcb8;
+  font: 13px/1.5 var(--font-sans);
+}
+
+.galaxy-gate-feedback[data-result="failed"] {
+  color: #ff9a96;
+}
+
+.galaxy-gate-feedback strong,
+.galaxy-gate-complete strong {
+  color: var(--signal);
+  font: 700 14px/1.2 var(--font-mono);
+  text-transform: uppercase;
+}
+
+@keyframes galaxy-gate-orbit {
+  to {
+    transform: rotate(348deg);
+  }
+}
+
 .flight-telemetry {
   min-height: 30px;
   padding: 8px 11px;
@@ -1954,6 +2201,28 @@ input,
 
   .galaxy-wordmark small {
     display: none;
+  }
+
+  .galaxy-gate {
+    width: 132px;
+    height: 132px;
+  }
+
+  .galaxy-gate-ring {
+    width: 104px;
+    height: 32px;
+  }
+
+  .galaxy-gate-label {
+    top: calc(50% + 54px);
+  }
+
+  .galaxy-gate-dialog > header,
+  .galaxy-gate-dialog form,
+  .galaxy-gate-complete,
+  .galaxy-gate-feedback[data-result="passed"] {
+    padding-right: 20px;
+    padding-left: 20px;
   }
 
   .flight-telemetry {

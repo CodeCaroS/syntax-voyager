@@ -1,7 +1,16 @@
 "use client";
 
+import { galaxies, galaxyGates } from "@/lib/voyage";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useVoyageProgress } from "./useVoyageProgress";
 
 export interface SearchArticle {
   id: string;
@@ -50,6 +59,7 @@ interface WarpState {
 }
 
 type JourneyPhase = "cruising" | "warping" | "arrived";
+type GateResult = "idle" | "passed" | "failed";
 
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
@@ -68,6 +78,7 @@ const galaxyColor = (galaxy: string) =>
 
 export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gateDialogRef = useRef<HTMLDialogElement>(null);
   const hitAreasRef = useRef<
     Array<{ id: string; x: number; y: number; r: number }>
   >([]);
@@ -101,14 +112,40 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
   const [journeyPhase, setJourneyPhase] = useState<JourneyPhase>("cruising");
   const [motionPaused, setMotionPaused] = useState(false);
+  const [gateAnswer, setGateAnswer] = useState("");
+  const [gateResult, setGateResult] = useState<GateResult>("idle");
+  const [gateFeedback, setGateFeedback] = useState("");
   const selectedIdRef = useRef(selectedId);
+  const { progress, ready, updateProgress } = useVoyageProgress();
+  const gateIndex = ready
+    ? galaxyGates.findIndex(
+        (gate) => !progress.passedGalaxyGates.includes(gate.galaxyId),
+      )
+    : 0;
+  const activeGate = gateIndex >= 0 ? galaxyGates[gateIndex] : null;
+  const nextGalaxy = gateIndex >= 0 ? galaxies[gateIndex + 1] : null;
+  const unlockedGalaxyTitles = useMemo(
+    () =>
+      new Set(
+        galaxies
+          .slice(0, gateIndex < 0 ? galaxies.length : gateIndex + 1)
+          .map((galaxy) => galaxy.title),
+      ),
+    [gateIndex],
+  );
+  const navigableArticles = useMemo(
+    () =>
+      articles.filter((article) => unlockedGalaxyTitles.has(article.galaxy)),
+    [articles, unlockedGalaxyTitles],
+  );
 
   const positions = useMemo(
     () =>
       new Map<string, Point3D>(
-        articles.map((article, index) => {
+        navigableArticles.map((article, index) => {
           const angle = index * Math.PI * (3 - Math.sqrt(5));
-          const vertical = 1 - (2 * (index + 0.5)) / articles.length;
+          const vertical =
+            1 - (2 * (index + 0.5)) / navigableArticles.length;
           const ring = Math.sqrt(1 - vertical * vertical);
           const shell = 480 + (index % 5) * 140;
           return [
@@ -121,13 +158,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           ];
         }),
       ),
-    [articles],
+    [navigableArticles],
   );
   const nodeSizeById = useMemo(() => {
     const connections = new Map(
-      articles.map((article) => [article.id, new Set<string>()]),
+      navigableArticles.map((article) => [article.id, new Set<string>()]),
     );
-    for (const article of articles) {
+    for (const article of navigableArticles) {
       const targets = new Set([
         ...article.prerequisites,
         ...article.relations.map((relation) => relation.target),
@@ -147,25 +184,25 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         0.72 + Math.sqrt(links.size / maximum) * 0.88,
       ]),
     );
-  }, [articles]);
+  }, [navigableArticles]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const results = useMemo(() => {
-    if (!normalizedQuery) return articles;
-    return articles.filter((article) =>
+    if (!normalizedQuery) return navigableArticles;
+    return navigableArticles.filter((article) =>
       `${article.title} ${article.summary} ${article.searchText}`
         .toLowerCase()
         .includes(normalizedQuery),
     );
-  }, [articles, normalizedQuery]);
+  }, [navigableArticles, normalizedQuery]);
 
-  const selectedArticle = articles.find(
+  const selectedArticle = navigableArticles.find(
     (article) => article.id === selectedId,
   );
   const selectedConnections = useMemo(() => {
     if (!selectedArticle) return [];
 
-    return articles.flatMap((article) => {
+    return navigableArticles.flatMap((article) => {
       if (article.id === selectedArticle.id) return [];
 
       const directRelation = selectedArticle.relations.find(
@@ -186,7 +223,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       return relation ? [{ article, relation }] : [];
     });
-  }, [articles, selectedArticle]);
+  }, [navigableArticles, selectedArticle]);
 
   useEffect(() => {
     if (journeyPhase !== "arrived") return;
@@ -662,7 +699,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         }
       }
 
-      const projected = articles
+      const projected = navigableArticles
         .map((article) => {
           const point = positions.get(article.id);
           return point ? { article, ...project(point, true) } : null;
@@ -691,7 +728,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         projected.map((node) => [node.article.id, node]),
       );
 
-      for (const article of articles) {
+      for (const article of navigableArticles) {
         const end = projectedById.get(article.id);
         if (!end) continue;
         const connections = new Set([
@@ -1134,7 +1171,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       observer.disconnect();
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [articles, nodeSizeById, positions]);
+  }, [navigableArticles, nodeSizeById, positions]);
 
   const cancelWarp = () => {
     warpRef.current.active = false;
@@ -1147,19 +1184,20 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   };
 
   const travelRelative = (direction: -1 | 1) => {
-    if (articles.length === 0) return;
+    if (navigableArticles.length === 0) return;
     const currentId = warpRef.current.active
       ? warpRef.current.targetId
       : selectedIdRef.current;
-    const currentIndex = articles.findIndex(
+    const currentIndex = navigableArticles.findIndex(
       (article) => article.id === currentId,
     );
     const startIndex =
       currentIndex >= 0 ? currentIndex : direction === 1 ? -1 : 0;
     const nextIndex =
-      (startIndex + direction + articles.length) % articles.length;
+      (startIndex + direction + navigableArticles.length) %
+      navigableArticles.length;
     setQuery("");
-    warpTo(articles[nextIndex].id);
+    warpTo(navigableArticles[nextIndex].id);
   };
 
   const selectAt = (x: number, y: number) => {
@@ -1171,6 +1209,34 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     warpTo(
       hit.id === selectedIdRef.current && !warpRef.current.active ? "" : hit.id,
     );
+  };
+
+  const openGalaxyGate = () => {
+    setGateAnswer("");
+    setGateResult("idle");
+    setGateFeedback("");
+    if (!gateDialogRef.current?.open) gateDialogRef.current?.showModal();
+  };
+
+  const submitGalaxyGate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!activeGate || !nextGalaxy || !gateAnswer) return;
+    if (gateAnswer !== activeGate.correctAnswer) {
+      setGateResult("failed");
+      setGateFeedback("Signal rejected. Recheck the concept and try again.");
+      return;
+    }
+
+    updateProgress((current) => ({
+      ...current,
+      passedGalaxyGates: Array.from(
+        new Set([...current.passedGalaxyGates, activeGate.galaxyId]),
+      ),
+    }));
+    setGateResult("passed");
+    setGateFeedback(`Access granted. ${nextGalaxy.title} is now online.`);
+    setQuery("");
+    warpTo("");
   };
 
   return (
@@ -1245,6 +1311,112 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
         <div className="voyage-reticle" aria-hidden="true" />
 
+        <button
+          className="galaxy-gate"
+          type="button"
+          data-complete={!activeGate}
+          disabled={!ready}
+          onClick={openGalaxyGate}
+          aria-label={
+            activeGate && nextGalaxy
+              ? `Open black hole test to unlock ${nextGalaxy.title}`
+              : "All galaxy gates cleared"
+          }
+        >
+          <span className="galaxy-gate-singularity" aria-hidden="true" />
+          <span className="galaxy-gate-ring" aria-hidden="true" />
+          <span className="galaxy-gate-label">
+            <strong>{activeGate ? "Black hole test" : "Gates cleared"}</strong>
+            <small>
+              {activeGate && nextGalaxy
+                ? `${galaxies[gateIndex].callSign} → ${nextGalaxy.callSign}`
+                : "All galaxies online"}
+            </small>
+          </span>
+        </button>
+
+        <dialog
+          ref={gateDialogRef}
+          className="galaxy-gate-dialog"
+          aria-labelledby="galaxy-gate-title"
+          onClose={() => {
+            setGateAnswer("");
+            setGateResult("idle");
+            setGateFeedback("");
+          }}
+        >
+          <button
+            className="galaxy-gate-close"
+            type="button"
+            onClick={() => gateDialogRef.current?.close()}
+            aria-label="Close galaxy test"
+          >
+            ×
+          </button>
+          <header>
+            <span>Event horizon checkpoint</span>
+            <h2 id="galaxy-gate-title">
+              {gateResult === "passed"
+                ? "Galaxy access granted"
+                : activeGate && nextGalaxy
+                ? `Unlock ${nextGalaxy.title}`
+                : "All galaxies unlocked"}
+            </h2>
+          </header>
+
+          {gateResult === "passed" ? (
+            <div className="galaxy-gate-feedback" data-result="passed">
+              <strong>Pass confirmed</strong>
+              <p role="status">{gateFeedback}</p>
+              <button
+                type="button"
+                onClick={() => gateDialogRef.current?.close()}
+              >
+                Enter next galaxy
+              </button>
+            </div>
+          ) : !activeGate ? (
+            <div className="galaxy-gate-complete">
+              <strong>Deep-space access confirmed.</strong>
+              <p>Every knowledge galaxy is online.</p>
+            </div>
+          ) : (
+            <form onSubmit={submitGalaxyGate}>
+              <fieldset>
+                <legend>{activeGate.question}</legend>
+                {activeGate.answers.map((answer) => (
+                  <label key={answer}>
+                    <input
+                      type="radio"
+                      name="galaxy-gate-answer"
+                      value={answer}
+                      checked={gateAnswer === answer}
+                      onChange={() => {
+                        setGateAnswer(answer);
+                        setGateResult("idle");
+                        setGateFeedback("");
+                      }}
+                    />
+                    <span>{answer}</span>
+                  </label>
+                ))}
+              </fieldset>
+              {gateResult === "failed" ? (
+                <p
+                  className="galaxy-gate-feedback"
+                  data-result="failed"
+                  role="alert"
+                >
+                  {gateFeedback}
+                </p>
+              ) : null}
+              <button type="submit" disabled={!gateAnswer}>
+                Cross event horizon
+              </button>
+            </form>
+          )}
+        </dialog>
+
         <div className="flight-telemetry" aria-live="polite">
           <span className="telemetry-signal" aria-hidden="true" />
           <span>
@@ -1263,6 +1435,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           <span>
             <strong>Syntax Voyager</strong>
             <small>
+              {navigableArticles.length.toString().padStart(2, "0")} /{" "}
               {articles.length.toString().padStart(2, "0")} nodes online
             </small>
           </span>
@@ -1373,7 +1546,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               <span>Node profile</span>
               <strong>
                 {selectedArticle.order.toString().padStart(2, "0")} /{" "}
-                {articles.length.toString().padStart(2, "0")}
+                {navigableArticles.length.toString().padStart(2, "0")}
               </strong>
             </header>
             <h2>{selectedArticle.title}</h2>

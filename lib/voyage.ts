@@ -62,6 +62,40 @@ export function galaxyForOrder(order: number) {
   return galaxies.find((galaxy) => galaxy.includes(order)) ?? galaxies[0];
 }
 
+export interface GalaxyGate {
+  galaxyId: GalaxyId;
+  question: string;
+  answers: string[];
+  correctAnswer: string;
+}
+
+export const galaxyGates: GalaxyGate[] = [
+  {
+    galaxyId: "origin-sector",
+    question: "Which construct repeats instructions while a condition remains true?",
+    answers: ["A loop", "A variable", "A string"],
+    correctAnswer: "A loop",
+  },
+  {
+    galaxyId: "systems-frontier",
+    question: "Where should untrusted API input be validated first?",
+    answers: ["At the system boundary", "Inside the database", "In the user interface only"],
+    correctAnswer: "At the system boundary",
+  },
+  {
+    galaxyId: "algorithm-belt",
+    question: "What does Big O notation describe?",
+    answers: ["Growth of resource cost", "Exact runtime in seconds", "Number of source files"],
+    correctAnswer: "Growth of resource cost",
+  },
+  {
+    galaxyId: "reliability-expanse",
+    question: "What makes retrying the same message safe?",
+    answers: ["Idempotent processing", "A longer timeout", "More worker threads"],
+    correctAnswer: "Idempotent processing",
+  },
+];
+
 export interface FlightPlan {
   id: string;
   callSign: string;
