@@ -88,12 +88,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       new Map<string, Point3D>(
         articles.map((article, index) => {
           const angle = index * 1.16 - 0.65;
-          const radius = 120 + (index % 3) * 54;
+          const radius = 160 + (index % 3) * 72;
           return [
             article.id,
             {
               x: Math.cos(angle) * radius,
-              y: (index - (articles.length - 1) / 2) * 34,
+              y:
+                Math.sin(index * 0.87) * 120 +
+                Math.cos(index * 0.41) * 35,
               z: Math.sin(angle) * radius,
             },
           ];
@@ -201,7 +203,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
     };
 
-    const project = (point: Point3D) => {
+    const project = (point: Point3D, keepVisible = false) => {
       const view = viewRef.current;
       const cosY = Math.cos(view.rotationY);
       const sinY = Math.sin(view.rotationY);
@@ -218,17 +220,23 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const screenX = x1 * scale;
       const screenY = y * scale;
 
-      return {
-        x:
+      const projectedX =
           width / 2 +
           Math.cos(orbitPhase) * width * 0.055 +
           screenX * cosRoll -
-          screenY * sinRoll,
-        y:
-          height / 2 +
+          screenY * sinRoll;
+      const projectedY =
+          height * 0.43 +
           Math.sin(orbitPhase * 2) * height * 0.025 +
           screenX * sinRoll +
-          screenY * cosRoll,
+          screenY * cosRoll;
+      const bottomMargin = width <= 680 ? 230 : 190;
+
+      return {
+        x: keepVisible ? clamp(projectedX, 48, width - 48) : projectedX,
+        y: keepVisible
+          ? clamp(projectedY, 76, height - bottomMargin)
+          : projectedY,
         z,
         scale,
       };
@@ -374,11 +382,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       for (const article of articles) {
         const target = positions.get(article.id);
         if (!target) continue;
-        const end = project(target);
+        const end = project(target, true);
         for (const prerequisiteId of article.prerequisites) {
           const source = positions.get(prerequisiteId);
           if (!source) continue;
-          const start = project(source);
+          const start = project(source, true);
           const routeFocus = Math.max(
             focusLevel(article.id),
             focusLevel(prerequisiteId),
@@ -398,7 +406,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const projected = articles
         .map((article) => {
           const point = positions.get(article.id);
-          return point ? { article, ...project(point) } : null;
+          return point ? { article, ...project(point, true) } : null;
         })
         .filter((node): node is NonNullable<typeof node> => node !== null)
         .sort((a, b) => b.z - a.z);
@@ -414,7 +422,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           motionReduced || arrivalAge > 1200
             ? 0
             : 1 - clamp(arrivalAge / 1200, 0, 1);
-        const radius = clamp((11 + focus * 8) * node.scale, 7, 27);
+        const radius = clamp((14 + focus * 10) * node.scale, 9, 34);
         const red = Math.round(116 + 101 * focus);
         const green = Math.round(230 + 25 * focus);
         const blue = Math.round(211 - 126 * focus);
@@ -480,10 +488,15 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         );
 
         if (focus > 0.01 || node.scale > 1.12) {
+          const placeLabelLeft = node.x > width - 260;
           context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
-          context.font = `${Math.round(400 + focus * 200)} ${11 + focus * 2}px "Segoe UI", sans-serif`;
-          context.textAlign = "left";
-          context.fillText(node.article.title, node.x + radius + 11, node.y - 1);
+          context.font = `${Math.round(400 + focus * 200)} ${13 + focus * 3}px "Segoe UI", sans-serif`;
+          context.textAlign = placeLabelLeft ? "right" : "left";
+          context.fillText(
+            node.article.title,
+            node.x + (placeLabelLeft ? -radius - 11 : radius + 11),
+            node.y - 1,
+          );
         }
 
         hitAreasRef.current.push({
