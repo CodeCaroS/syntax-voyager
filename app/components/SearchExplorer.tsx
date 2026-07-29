@@ -930,8 +930,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         <canvas
           ref={canvasRef}
           className="universe-canvas"
-          aria-label="Interactive 3D map of programming fundamentals. Drag to rotate, use the arrow keys, or choose a node from the search."
-          aria-description="Click the focused sun again or press Escape to return to the galaxy overview."
+          aria-label="Interactive 3D map of programming fundamentals. Drag to rotate, use the arrow keys, or choose a node from the search. Click the focused sun again or press Escape to return to the galaxy overview."
           role="img"
           tabIndex={0}
           onKeyDown={(event) => {
