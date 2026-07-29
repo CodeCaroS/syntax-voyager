@@ -76,6 +76,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
+  const selectedIdRef = useRef(selectedId);
 
   const positions = useMemo(
     () =>
@@ -216,6 +217,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           view.rotationX = warp.toX;
           view.rotationY = warp.toY;
           view.zoom = warp.cruiseZoom;
+          selectedIdRef.current = warp.targetId;
           setSelectedId(warp.targetId);
         }
       } else {
@@ -293,7 +295,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           if (!source) continue;
           const start = project(source);
           const active =
-            article.id === selectedId || prerequisiteId === selectedId;
+            article.id === selectedIdRef.current ||
+            prerequisiteId === selectedIdRef.current;
           context.beginPath();
           context.moveTo(start.x, start.y);
           context.lineTo(end.x, end.y);
@@ -315,7 +318,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       hitAreasRef.current = [];
       for (const node of projected) {
-        const selected = node.article.id === selectedId;
+        const selected = node.article.id === selectedIdRef.current;
         const radius = clamp((selected ? 19 : 11) * node.scale, 7, 27);
         if (selected) {
           context.beginPath();
@@ -407,7 +410,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       observer.disconnect();
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [articles, positions, selectedId]);
+  }, [articles, positions]);
 
   const rotateView = (amount: number) => {
     warpRef.current.active = false;
