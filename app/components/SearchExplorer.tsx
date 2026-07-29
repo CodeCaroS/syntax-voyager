@@ -125,24 +125,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       view.targetX = toX;
       view.targetY = toY;
-      if (reducedMotionRef.current) {
-        view.rotationX = toX;
-        view.rotationY = toY;
-        warpRef.current.active = false;
-        setSelectedId(id);
-      } else {
-        warpRef.current = {
-          active: true,
-          startedAt: performance.now(),
-          duration: 1450,
-          fromX: view.rotationX,
-          fromY: view.rotationY,
-          toX,
-          toY,
-          cruiseZoom: view.zoom,
-          targetId: id,
-        };
-      }
+      warpRef.current = {
+        active: true,
+        startedAt: performance.now(),
+        duration: reducedMotionRef.current ? 650 : 1450,
+        fromX: view.rotationX,
+        fromY: view.rotationY,
+        toX,
+        toY,
+        cruiseZoom: view.zoom,
+        targetId: id,
+      };
     },
     [positions],
   );
@@ -211,7 +204,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       if (warp.active) {
         const progress = clamp((time - warp.startedAt) / warp.duration, 0, 1);
         const eased = 1 - Math.pow(1 - progress, 4);
-        warpIntensity = Math.pow(Math.sin(Math.PI * progress), 1.35);
+        warpIntensity = reducedMotion
+          ? 0
+          : Math.pow(Math.sin(Math.PI * progress), 1.35);
         view.rotationX = warp.fromX + (warp.toX - warp.fromX) * eased;
         view.rotationY = warp.fromY + (warp.toY - warp.fromY) * eased;
         view.zoom = warp.cruiseZoom - warpIntensity * 190;
