@@ -34,6 +34,8 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
   assert.match(html, /Next node/);
   assert.match(html, /Choose a coordinate/);
   assert.match(html, /50(?:<!-- -->)? nodes online/);
+  assert.match(html, /Node profile/);
+  assert.match(html, /Connected coordinates/);
   assert.match(html, /Interactive 3D map of programming fundamentals/);
   assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
   assert.match(html, /Functions/);

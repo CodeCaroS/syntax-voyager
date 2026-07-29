@@ -9,7 +9,9 @@ export interface SearchArticle {
   summary: string;
   order: number;
   level: string;
+  system: string;
   prerequisites: string[];
+  relations: Array<{ target: string; type: string }>;
   searchText: string;
 }
 
@@ -41,6 +43,8 @@ interface WarpState {
   toY: number;
   cruiseZoom: number;
   targetId: string;
+  fromOrigin: Point3D;
+  toOrigin: Point3D;
 }
 
 type JourneyPhase = "cruising" | "warping" | "arrived";
@@ -54,9 +58,9 @@ const LABEL_RENDER_DISTANCE = -220;
 
 export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const hitAreasRef = useRef<Array<{ id: string; x: number; y: number; r: number }>>(
-    [],
-  );
+  const hitAreasRef = useRef<
+    Array<{ id: string; x: number; y: number; r: number }>
+  >([]);
   const viewRef = useRef<ViewState>({
     rotationX: -0.12,
     rotationY: -0.45,
@@ -80,6 +84,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     toY: 0,
     cruiseZoom: 680,
     targetId: "",
+    fromOrigin: { x: 0, y: 0, z: 0 },
+    toOrigin: { x: 0, y: 0, z: 0 },
   });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
@@ -120,6 +126,31 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
   const selectedArticle =
     articles.find((article) => article.id === selectedId) ?? articles[0];
+  const selectedConnections = useMemo(() => {
+    if (!selectedArticle) return [];
+
+    return articles.flatMap((article) => {
+      if (article.id === selectedArticle.id) return [];
+
+      const directRelation = selectedArticle.relations.find(
+        (relation) => relation.target === article.id,
+      );
+      const incomingRelation = article.relations.find(
+        (relation) => relation.target === selectedArticle.id,
+      );
+      const relation =
+        directRelation?.type ??
+        (selectedArticle.prerequisites.includes(article.id)
+          ? "requires"
+          : article.prerequisites.includes(selectedArticle.id)
+            ? "unlocks"
+            : incomingRelation
+              ? "linked-from"
+              : null);
+
+      return relation ? [{ article, relation }] : [];
+    });
+  }, [articles, selectedArticle]);
 
   useEffect(() => {
     if (journeyPhase !== "arrived") return;
@@ -131,10 +162,44 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     (id: string) => {
       const position = positions.get(id);
       if (!position) return;
-      const horizontalDistance = Math.hypot(position.x, position.z);
+      const activeWarp = warpRef.current;
+      if (id === selectedIdRef.current && !activeWarp.active) return;
+
+      const now = performance.now();
+      let fromOrigin = positions.get(selectedIdRef.current) ?? {
+        x: 0,
+        y: 0,
+        z: 0,
+      };
+      if (activeWarp.active) {
+        const progress = clamp(
+          (now - activeWarp.startedAt) / activeWarp.duration,
+          0,
+          1,
+        );
+        const blend = progress * progress * (3 - 2 * progress);
+        fromOrigin = {
+          x:
+            activeWarp.fromOrigin.x +
+            (activeWarp.toOrigin.x - activeWarp.fromOrigin.x) * blend,
+          y:
+            activeWarp.fromOrigin.y +
+            (activeWarp.toOrigin.y - activeWarp.fromOrigin.y) * blend,
+          z:
+            activeWarp.fromOrigin.z +
+            (activeWarp.toOrigin.z - activeWarp.fromOrigin.z) * blend,
+        };
+      }
+
+      const target = {
+        x: position.x - fromOrigin.x,
+        y: position.y - fromOrigin.y,
+        z: position.z - fromOrigin.z,
+      };
+      const horizontalDistance = Math.hypot(target.x, target.z);
       const view = viewRef.current;
-      const toX = Math.atan2(position.y, horizontalDistance);
-      const rawY = Math.atan2(position.x, position.z);
+      const toX = Math.atan2(target.y, horizontalDistance);
+      const rawY = Math.atan2(target.x, target.z);
       const shortestTurn = Math.atan2(
         Math.sin(rawY - view.rotationY),
         Math.cos(rawY - view.rotationY),
@@ -146,7 +211,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       setJourneyPhase("warping");
       warpRef.current = {
         active: true,
-        startedAt: performance.now(),
+        startedAt: now,
         duration: reducedMotionRef.current ? 650 : 1800,
         fromX: view.rotationX,
         fromY: view.rotationY,
@@ -154,6 +219,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         toY,
         cruiseZoom: view.zoom,
         targetId: id,
+        fromOrigin,
+        toOrigin: position,
       };
     },
     [positions],
@@ -196,6 +263,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     let flightDistance = 0;
     let orbitPhase = 0;
     let previousFrameTime = 0;
+    let focusOrigin = positions.get(selectedIdRef.current) ?? {
+      x: 0,
+      y: 0,
+      z: 0,
+    };
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -209,31 +281,35 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
     const project = (point: Point3D, keepVisible = false) => {
       const view = viewRef.current;
+      const localX = point.x - focusOrigin.x;
+      const localY = point.y - focusOrigin.y;
+      const localZ = point.z - focusOrigin.z;
       const cosY = Math.cos(view.rotationY);
       const sinY = Math.sin(view.rotationY);
-      const x1 = point.x * cosY - point.z * sinY;
-      const z1 = point.x * sinY + point.z * cosY;
+      const x1 = localX * cosY - localZ * sinY;
+      const z1 = localX * sinY + localZ * cosY;
       const cosX = Math.cos(view.rotationX);
       const sinX = Math.sin(view.rotationX);
-      const y = point.y * cosX - z1 * sinX;
-      const z = point.y * sinX + z1 * cosX;
+      const y = localY * cosX - z1 * sinX;
+      const z = localY * sinX + z1 * cosX;
       const scale = view.zoom / (view.zoom + z);
       const roll = Math.sin(orbitPhase) * 0.035;
       const cosRoll = Math.cos(roll);
       const sinRoll = Math.sin(roll);
       const screenX = x1 * scale;
       const screenY = y * scale;
+      const driftWeight = clamp(Math.hypot(localX, localY, localZ) / 120, 0, 1);
 
       const projectedX =
-          width / 2 +
-          Math.cos(orbitPhase) * width * 0.055 +
-          screenX * cosRoll -
-          screenY * sinRoll;
+        width / 2 +
+        Math.cos(orbitPhase) * width * 0.055 * driftWeight +
+        screenX * cosRoll -
+        screenY * sinRoll;
       const projectedY =
-          height * 0.43 +
-          Math.sin(orbitPhase * 2) * height * 0.025 +
-          screenX * sinRoll +
-          screenY * cosRoll;
+        height / 2 +
+        Math.sin(orbitPhase * 2) * height * 0.025 * driftWeight +
+        screenX * sinRoll +
+        screenY * cosRoll;
       const bottomMargin = width <= 680 ? 230 : 190;
 
       return {
@@ -293,14 +369,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         }
       }
       flightDistance +=
-        frameDuration *
-        (motionReduced ? 0 : 0.00013 + warpIntensity * 0.0004);
+        frameDuration * (motionReduced ? 0 : 0.00013 + warpIntensity * 0.0004);
       orbitPhase +=
-        frameDuration *
-        (motionReduced ? 0 : 0.00012 + warpIntensity * 0.00008);
+        frameDuration * (motionReduced ? 0 : 0.00012 + warpIntensity * 0.00008);
 
-      const focusBlend =
-        warpProgress * warpProgress * (3 - 2 * warpProgress);
+      const focusBlend = warpProgress * warpProgress * (3 - 2 * warpProgress);
       const focusLevel = (id: string) => {
         if (warp.active && warp.targetId !== selectedIdRef.current) {
           if (id === selectedIdRef.current) return 1 - focusBlend;
@@ -308,6 +381,24 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         }
         return id === selectedIdRef.current ? 1 : 0;
       };
+      const selectedOrigin = positions.get(selectedIdRef.current) ?? {
+        x: 0,
+        y: 0,
+        z: 0,
+      };
+      focusOrigin = warp.active
+        ? {
+            x:
+              warp.fromOrigin.x +
+              (warp.toOrigin.x - warp.fromOrigin.x) * focusBlend,
+            y:
+              warp.fromOrigin.y +
+              (warp.toOrigin.y - warp.fromOrigin.y) * focusBlend,
+            z:
+              warp.fromOrigin.z +
+              (warp.toOrigin.z - warp.fromOrigin.z) * focusBlend,
+          }
+        : selectedOrigin;
 
       context.fillStyle = "#030706";
       context.fillRect(0, 0, width, height);
@@ -337,10 +428,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const y = height / 2 + directionY * distance;
         const pulse = motionReduced
           ? 0.28
-          : 0.12 +
-            ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
-        const alpha =
-          pulse * (0.35 + star.depth * 0.45 + progress * 0.35);
+          : 0.12 + ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
+        const alpha = pulse * (0.35 + star.depth * 0.45 + progress * 0.35);
         const trail = (10 + warpIntensity * 72) * star.depth * progress;
         context.strokeStyle =
           star.tone === 0
@@ -414,8 +503,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           );
         })
         .sort((a, b) => {
-          if (a.article.id === selectedIdRef.current) return 1;
-          if (b.article.id === selectedIdRef.current) return -1;
+          const focusDifference =
+            focusLevel(a.article.id) - focusLevel(b.article.id);
+          if (Math.abs(focusDifference) > 0.01) return focusDifference;
           return b.z - a.z;
         });
       const projectedById = new Map(
@@ -425,17 +515,20 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       for (const article of articles) {
         const end = projectedById.get(article.id);
         if (!end) continue;
-        for (const prerequisiteId of article.prerequisites) {
-          const start = projectedById.get(prerequisiteId);
+        const connections = new Set([
+          ...article.prerequisites,
+          ...article.relations.map((relation) => relation.target),
+        ]);
+        for (const connectionId of connections) {
+          const start = projectedById.get(connectionId);
           if (!start) continue;
           const routeFocus = Math.max(
             focusLevel(article.id),
-            focusLevel(prerequisiteId),
+            focusLevel(connectionId),
           );
           if (
             routeFocus < 0.01 &&
-            (start.z > ROUTE_RENDER_DISTANCE ||
-              end.z > ROUTE_RENDER_DISTANCE)
+            (start.z > ROUTE_RENDER_DISTANCE || end.z > ROUTE_RENDER_DISTANCE)
           ) {
             continue;
           }
@@ -462,11 +555,50 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           motionReduced || arrivalAge > 1200
             ? 0
             : 1 - clamp(arrivalAge / 1200, 0, 1);
-        const radius = clamp((14 + focus * 10) * node.scale, 9, 34);
+        const radius = clamp((14 + focus * 14) * node.scale, 9, 40);
         const red = Math.round(116 + 101 * focus);
         const green = Math.round(230 + 25 * focus);
         const blue = Math.round(211 - 126 * focus);
         if (focus > 0.01) {
+          const solarPulse = motionReduced
+            ? 1
+            : 1 + Math.sin(time * 0.0035) * 0.06;
+          const coronaRadius = radius * 3.8 * solarPulse;
+          const corona = context.createRadialGradient(
+            node.x,
+            node.y,
+            radius * 0.35,
+            node.x,
+            node.y,
+            coronaRadius,
+          );
+          corona.addColorStop(0, `rgba(255, 255, 220, ${focus * 0.72})`);
+          corona.addColorStop(0.18, `rgba(217, 255, 85, ${focus * 0.48})`);
+          corona.addColorStop(0.52, `rgba(217, 255, 85, ${focus * 0.13})`);
+          corona.addColorStop(1, "rgba(217, 255, 85, 0)");
+          context.fillStyle = corona;
+          context.beginPath();
+          context.arc(node.x, node.y, coronaRadius, 0, Math.PI * 2);
+          context.fill();
+
+          if (focus > 0.6) {
+            context.save();
+            context.translate(node.x, node.y);
+            context.rotate(time * 0.00008);
+            context.strokeStyle = `rgba(217, 255, 85, ${focus * 0.22})`;
+            context.lineWidth = 0.8;
+            for (let ray = 0; ray < 12; ray += 1) {
+              const angle = (ray / 12) * Math.PI * 2;
+              const inner = radius * 1.5;
+              const outer = radius * (2 + (ray % 3) * 0.24) * solarPulse;
+              context.beginPath();
+              context.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+              context.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+              context.stroke();
+            }
+            context.restore();
+          }
+
           context.beginPath();
           context.ellipse(
             node.x,
@@ -512,7 +644,22 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         context.arc(node.x, node.y, radius * 3.2, 0, Math.PI * 2);
         context.fill();
 
-        context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+        if (focus > 0.01) {
+          const solarCore = context.createRadialGradient(
+            node.x - radius * 0.28,
+            node.y - radius * 0.32,
+            radius * 0.08,
+            node.x,
+            node.y,
+            radius,
+          );
+          solarCore.addColorStop(0, "#ffffef");
+          solarCore.addColorStop(0.38, "#efffa1");
+          solarCore.addColorStop(1, "#d9ff55");
+          context.fillStyle = solarCore;
+        } else {
+          context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+        }
         context.beginPath();
         context.arc(node.x, node.y, radius, 0, Math.PI * 2);
         context.fill();
@@ -527,7 +674,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           node.y + 0.5,
         );
 
-        if (focus > 0.01 || node.z < LABEL_RENDER_DISTANCE) {
+        if (focus > 0.6) {
+          context.fillStyle = "rgba(242, 239, 229, 0.94)";
+          context.font = '600 15px "Segoe UI", sans-serif';
+          context.textAlign = "center";
+          context.fillText(node.article.title, node.x, node.y + radius + 25);
+        } else if (focus > 0.01 || node.z < LABEL_RENDER_DISTANCE) {
           const placeLabelLeft = node.x > width - 260;
           context.fillStyle = `rgba(242, 239, 229, ${0.72 + focus * 0.28})`;
           context.font = `${Math.round(400 + focus * 200)} ${13 + focus * 3}px "Segoe UI", sans-serif`;
@@ -603,9 +755,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     const currentId = warpRef.current.active
       ? warpRef.current.targetId
       : selectedIdRef.current;
-    const currentIndex = articles.findIndex((article) => article.id === currentId);
+    const currentIndex = articles.findIndex(
+      (article) => article.id === currentId,
+    );
     const nextIndex =
-      (Math.max(currentIndex, 0) + direction + articles.length) % articles.length;
+      (Math.max(currentIndex, 0) + direction + articles.length) %
+      articles.length;
     setQuery("");
     warpTo(articles[nextIndex].id);
   };
@@ -635,10 +790,18 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             if (event.key === "ArrowLeft") rotateView(-0.28);
             if (event.key === "ArrowRight") rotateView(0.28);
             if (event.key === "ArrowUp") {
-              viewRef.current.targetX = clamp(viewRef.current.targetX - 0.18, -1.1, 1.1);
+              viewRef.current.targetX = clamp(
+                viewRef.current.targetX - 0.18,
+                -1.1,
+                1.1,
+              );
             }
             if (event.key === "ArrowDown") {
-              viewRef.current.targetX = clamp(viewRef.current.targetX + 0.18, -1.1, 1.1);
+              viewRef.current.targetX = clamp(
+                viewRef.current.targetX + 0.18,
+                -1.1,
+                1.1,
+              );
             }
           }}
           onPointerDown={(event) => {
@@ -699,7 +862,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           </span>
           <span>
             <strong>Syntax Voyager</strong>
-            <small>{articles.length.toString().padStart(2, "0")} nodes online</small>
+            <small>
+              {articles.length.toString().padStart(2, "0")} nodes online
+            </small>
           </span>
         </Link>
 
@@ -795,17 +960,58 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
         {selectedArticle ? (
           <aside className="node-inspector" aria-live="polite">
-            <span>
-              Node {selectedArticle.order.toString().padStart(2, "0")} selected
-            </span>
+            <header className="node-profile-header">
+              <span>Node profile</span>
+              <strong>
+                {selectedArticle.order.toString().padStart(2, "0")} /{" "}
+                {articles.length.toString().padStart(2, "0")}
+              </strong>
+            </header>
             <h2>{selectedArticle.title}</h2>
             <p>{selectedArticle.summary}</p>
+            <dl className="node-profile-meta">
+              <div>
+                <dt>Level</dt>
+                <dd>{selectedArticle.level}</dd>
+              </div>
+              <div>
+                <dt>System</dt>
+                <dd>{selectedArticle.system.replaceAll("-", " ")}</dd>
+              </div>
+              <div>
+                <dt>Links</dt>
+                <dd>{selectedConnections.length}</dd>
+              </div>
+            </dl>
+            <section
+              className="node-connections"
+              aria-labelledby="node-connections-title"
+            >
+              <div className="node-connections-heading">
+                <h3 id="node-connections-title">Connected coordinates</h3>
+                <span>
+                  {selectedConnections.length.toString().padStart(2, "0")}
+                </span>
+              </div>
+              <ul>
+                {selectedConnections.map(({ article, relation }) => (
+                  <li key={article.id}>
+                    <button type="button" onClick={() => warpTo(article.id)}>
+                      <span>{article.order.toString().padStart(2, "0")}</span>
+                      <span>
+                        <strong>{article.title}</strong>
+                        <small>{relation.replaceAll("-", " ")}</small>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
             <Link href={`/articles/${selectedArticle.id}`}>
               Open this lesson <span aria-hidden="true">↗</span>
             </Link>
           </aside>
         ) : null}
-
       </div>
     </section>
   );
