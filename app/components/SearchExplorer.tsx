@@ -669,6 +669,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       }
 
       hitAreasRef.current = [];
+      const hasFocusedSun = Boolean(selectedIdRef.current || warp.targetId);
       for (const node of projected) {
         const focus = focusLevel(node.article.id);
         const arrivalAge =
@@ -685,7 +686,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           9,
           width <= 680 ? 64 : 88,
         );
-        const [red, green, blue] = galaxyColor(node.article.galaxy);
+        const [baseRed, baseGreen, baseBlue] = galaxyColor(
+          node.article.galaxy,
+        );
+        const nodeBrightness = hasFocusedSun ? 0.2 + focus * 0.8 : 1;
+        const red = Math.round(baseRed * nodeBrightness);
+        const green = Math.round(baseGreen * nodeBrightness);
+        const blue = Math.round(baseBlue * nodeBrightness);
         if (focus > 0.01) {
           const solarPulse = motionReduced
             ? 1
@@ -823,7 +830,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         context.arc(node.x, node.y, radius, 0, Math.PI * 2);
         context.fill();
 
-        context.fillStyle = "#08100f";
+        context.fillStyle =
+          nodeBrightness < 0.5 ? "rgba(242, 239, 229, 0.68)" : "#08100f";
         context.textAlign = "center";
         context.textBaseline = "middle";
         if (focus > 0.6) {
