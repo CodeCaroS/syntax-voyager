@@ -488,8 +488,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       const localX = point.x - focusOrigin.x;
       const localY = point.y - focusOrigin.y;
       const localZ = point.z - focusOrigin.z;
-      const cosY = Math.cos(view.rotationY);
-      const sinY = Math.sin(view.rotationY);
+      const galaxyRotationY = view.rotationY + orbitPhase;
+      const cosY = Math.cos(galaxyRotationY);
+      const sinY = Math.sin(galaxyRotationY);
       const x1 = localX * cosY - localZ * sinY;
       const z1 = localX * sinY + localZ * cosY;
       const cosX = Math.cos(view.rotationX);
@@ -580,7 +581,6 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         view.rotationX += (view.targetX - view.rotationX) * ease;
         view.rotationY += (view.targetY - view.rotationY) * ease;
         if (!view.dragging) {
-          view.targetY += 0.0026 * motionScale;
           const orbitHeight =
             -0.12 + Math.sin(time * 0.00035 * motionScale) * 0.12;
           view.targetX += (orbitHeight - view.targetX) * 0.003;
@@ -704,7 +704,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
       context.save();
       context.translate(width / 2, height / 2);
-      context.rotate(-0.38 + Math.sin(orbitPhase * 0.72) * 0.12);
+      context.rotate(-0.38 + orbitPhase * 0.35);
       context.scale(1, 0.24);
       const milkyRadius = Math.hypot(width, height) * 0.78;
       const milkyWay = context.createRadialGradient(
@@ -757,7 +757,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const progress = (star.phase + flightDistance * star.speed) % 1;
         const distance =
           Math.pow(progress, 1.7) * Math.hypot(width, height) * 0.62;
-        const angle = star.angle + view.rotationY * 0.045;
+        const angle =
+          star.angle + orbitPhase * 0.2 + view.rotationY * 0.045;
         const directionX = Math.cos(angle);
         const directionY = Math.sin(angle);
         const x = width / 2 + directionX * distance;

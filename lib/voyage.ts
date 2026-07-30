@@ -246,38 +246,104 @@ export interface Expedition {
   steps: ExpeditionStep[];
 }
 
+export function missionStepType(step: ExpeditionStep) {
+  return step.href.startsWith("/lab?") ? "simulation" : "lesson";
+}
+
+export function missionStepTargetId(step: ExpeditionStep) {
+  if (missionStepType(step) === "lesson") {
+    return step.href.slice("/articles/".length);
+  }
+  return new URLSearchParams(step.href.split("?")[1]).get("challenge") ?? "";
+}
+
+export function missionStepHref(missionId: string, step: ExpeditionStep) {
+  const [path, query = ""] = step.href.split("?");
+  const params = new URLSearchParams(query);
+  params.set("mission", missionId);
+  params.set("step", step.id);
+  return `${path}?${params}`;
+}
+
+export function getMissionStepContext(missionId?: string, stepId?: string) {
+  const mission = expeditions.find((candidate) => candidate.id === missionId);
+  const stepIndex = mission?.steps.findIndex((step) => step.id === stepId) ?? -1;
+  if (!mission || stepIndex < 0) return null;
+  return {
+    mission,
+    step: mission.steps[stepIndex],
+    stepIndex,
+    nextStep: mission.steps[stepIndex + 1] ?? null,
+  };
+}
+
+export function missionStepCompleted(
+  step: ExpeditionStep,
+  masteredArticleIds: string[],
+  passedLabChallenges: string[],
+) {
+  const targetId = missionStepTargetId(step);
+  return missionStepType(step) === "lesson"
+    ? masteredArticleIds.includes(targetId)
+    : passedLabChallenges.includes(targetId);
+}
+
 export const expeditions: Expedition[] = [
   {
     id: "guessing-signal",
     callSign: "EX-01",
-    title: "Decode the guessing signal",
+    title: "Restore the docking sequence",
     summary:
-      "Assemble the classic number-guessing program while tracing every state change.",
+      "Learn the core control-flow signals, then prove each one in the simulator.",
     difficulty: "Cadet",
     steps: [
       {
         id: "store-target",
-        title: "Store the hidden coordinate",
-        brief: "Use variables and expressions to represent the target and guess.",
+        title: "Read ship telemetry",
+        brief: "Learn how values and variables hold changing ship data.",
         href: "/articles/values-and-variables",
       },
       {
+        id: "correct-fuel",
+        title: "Correct the fuel signal",
+        brief: "Apply the lesson by updating and transmitting a stored value.",
+        href: "/lab?challenge=fuel-correction",
+      },
+      {
         id: "compare-guess",
-        title: "Compare the incoming signal",
-        brief: "Choose the branch for a low, high, or correct guess.",
+        title: "Learn clearance decisions",
+        brief: "Understand how conditions choose the safe flight path.",
         href: "/articles/conditions",
       },
       {
+        id: "check-airlock",
+        title: "Verify airlock clearance",
+        brief: "Apply the lesson by implementing a safe conditional check.",
+        href: "/lab?challenge=airlock-condition",
+      },
+      {
+        id: "learn-orbits",
+        title: "Learn repeated orbits",
+        brief: "Understand how loops repeat work until a condition changes.",
+        href: "/articles/loops",
+      },
+      {
         id: "repeat-contact",
-        title: "Keep the channel open",
-        brief: "Repeat until the correct coordinate arrives.",
+        title: "Run the docking loop",
+        brief: "Apply the lesson by transmitting three approach orbits.",
         href: "/lab?challenge=docking-loop",
       },
       {
         id: "record-attempts",
-        title: "Record the flight log",
-        brief: "Store previous guesses and return a useful final result.",
+        title: "Record the approach log",
+        brief: "Finish the mission by storing the sequence as structured data.",
         href: "/articles/lists-and-records",
+      },
+      {
+        id: "inspect-approach-log",
+        title: "Inspect the approach log",
+        brief: "Apply the lesson by building and transmitting a collection.",
+        href: "/lab?challenge=collection-log",
       },
     ],
   },
@@ -296,9 +362,21 @@ export const expeditions: Expedition[] = [
         href: "/articles/lists-and-records",
       },
       {
+        id: "verify-records",
+        title: "Verify the cargo collection",
+        brief: "Apply the lesson by building and transmitting a collection.",
+        href: "/lab?challenge=collection-log",
+      },
+      {
+        id: "learn-calculation",
+        title: "Learn reusable calculations",
+        brief: "Understand how functions turn inputs into a reusable result.",
+        href: "/articles/functions",
+      },
+      {
         id: "calculate-mass",
         title: "Calculate payload mass",
-        brief: "Move the calculation into a reusable function.",
+        brief: "Apply the function lesson to the cargo mass calculation.",
         href: "/lab?challenge=cargo-function",
       },
       {
@@ -308,10 +386,22 @@ export const expeditions: Expedition[] = [
         href: "/articles/errors-and-input-validation",
       },
       {
+        id: "validate-cargo",
+        title: "Run cargo validation",
+        brief: "Apply the lesson by rejecting an invalid boundary value.",
+        href: "/lab?challenge=validation-boundary",
+      },
+      {
         id: "save-manifest",
         title: "Commit the manifest",
         brief: "Separate temporary state from durable state.",
         href: "/articles/state-and-persistence",
+      },
+      {
+        id: "commit-state",
+        title: "Commit the manifest state",
+        brief: "Apply the lesson by moving temporary state to a saved state.",
+        href: "/lab?challenge=state-commit",
       },
     ],
   },
@@ -330,10 +420,22 @@ export const expeditions: Expedition[] = [
         href: "/articles/api-boundaries-and-validation",
       },
       {
+        id: "test-boundary",
+        title: "Test the docking boundary",
+        brief: "Apply the lesson by rejecting an invalid API payload.",
+        href: "/lab?challenge=api-validation",
+      },
+      {
         id: "choose-request",
         title: "Choose the transmission",
         brief: "Match HTTP methods, paths, and status codes to intent.",
         href: "/articles/http-and-web-basics",
+      },
+      {
+        id: "send-response",
+        title: "Send the station response",
+        brief: "Apply the lesson by matching a request to its response.",
+        href: "/lab?challenge=http-response",
       },
       {
         id: "model-data",
@@ -342,10 +444,22 @@ export const expeditions: Expedition[] = [
         href: "/articles/data-modeling",
       },
       {
+        id: "verify-model",
+        title: "Verify the station record",
+        brief: "Apply the lesson by checking identity and ownership.",
+        href: "/lab?challenge=record-model",
+      },
+      {
         id: "protect-route",
         title: "Authorize the airlock",
         brief: "Separate identity from permission.",
         href: "/articles/authentication-and-authorization",
+      },
+      {
+        id: "test-authorization",
+        title: "Test airlock authorization",
+        brief: "Apply the lesson by denying an authenticated but unauthorized request.",
+        href: "/lab?challenge=authorization-check",
       },
     ],
   },
@@ -364,10 +478,22 @@ export const expeditions: Expedition[] = [
         href: "/articles/workflows-and-state-machines",
       },
       {
+        id: "transition-workflow",
+        title: "Run the relay transition",
+        brief: "Apply the lesson by moving through allowed workflow states.",
+        href: "/lab?challenge=workflow-transition",
+      },
+      {
         id: "deduplicate",
         title: "Neutralize duplicate signals",
         brief: "Design idempotent processing around a stable operation identity.",
         href: "/articles/reliable-processing-and-idempotency",
+      },
+      {
+        id: "retry-operation",
+        title: "Retry the relay operation",
+        brief: "Apply the lesson by preventing a duplicate side effect.",
+        href: "/lab?challenge=idempotent-retry",
       },
       {
         id: "queue-work",
@@ -376,10 +502,22 @@ export const expeditions: Expedition[] = [
         href: "/articles/messaging-and-queues",
       },
       {
+        id: "drain-queue",
+        title: "Drain the relay queue",
+        brief: "Apply the lesson by processing queued work in order.",
+        href: "/lab?challenge=queue-burst",
+      },
+      {
         id: "observe-flight",
         title: "Instrument the relay",
         brief: "Connect logs and signals to questions an operator must answer.",
         href: "/articles/logging-and-observability",
+      },
+      {
+        id: "trace-failure",
+        title: "Trace the relay failure",
+        brief: "Apply the lesson by emitting a correlated diagnostic signal.",
+        href: "/lab?challenge=observable-failure",
       },
     ],
   },
@@ -447,5 +585,157 @@ SET total TO cargo_mass(4, 6)
 DISPLAY total`,
     expectedOutput: ["24"],
     relatedArticleId: "functions",
+  },
+  {
+    id: "collection-log",
+    callSign: "SIM-05",
+    title: "Collection log",
+    objective: "Build an ordered approach log and transmit the collection.",
+    starter: `SET approach_log TO []
+APPEND "orbit-1" TO approach_log
+APPEND "orbit-2" TO approach_log
+DISPLAY approach_log`,
+    expectedOutput: ["[orbit-1, orbit-2]"],
+    relatedArticleId: "lists-and-records",
+  },
+  {
+    id: "validation-boundary",
+    callSign: "SIM-06",
+    title: "Validation boundary",
+    objective: "Reject a negative cargo mass before it enters the manifest.",
+    starter: `SET cargo_mass TO -3
+IF cargo_mass IS LESS THAN 0 THEN
+    DISPLAY "Cargo rejected"
+ELSE
+    DISPLAY "Cargo accepted"
+END IF`,
+    expectedOutput: ["Cargo rejected"],
+    relatedArticleId: "errors-and-input-validation",
+  },
+  {
+    id: "state-commit",
+    callSign: "SIM-07",
+    title: "State commit",
+    objective: "Move a manifest from temporary draft state to saved state.",
+    starter: `SET manifest_state TO "draft"
+SET manifest_state TO "saved"
+DISPLAY manifest_state`,
+    expectedOutput: ["saved"],
+    relatedArticleId: "state-and-persistence",
+  },
+  {
+    id: "api-validation",
+    callSign: "SIM-08",
+    title: "API validation",
+    objective: "Reject an API payload that is missing its required identity.",
+    starter: `SET payload_has_id TO FALSE
+IF NOT payload_has_id THEN
+    DISPLAY "400 Invalid payload"
+ELSE
+    DISPLAY "202 Accepted"
+END IF`,
+    expectedOutput: ["400 Invalid payload"],
+    relatedArticleId: "api-boundaries-and-validation",
+  },
+  {
+    id: "http-response",
+    callSign: "SIM-09",
+    title: "HTTP response",
+    objective: "Match a create request to the correct response status.",
+    starter: `SET method TO "POST"
+IF method IS EQUAL TO "POST" THEN
+    DISPLAY "201 Created"
+ELSE
+    DISPLAY "405 Method Not Allowed"
+END IF`,
+    expectedOutput: ["201 Created"],
+    relatedArticleId: "http-and-web-basics",
+  },
+  {
+    id: "record-model",
+    callSign: "SIM-10",
+    title: "Record model",
+    objective: "Verify that a station record has an identity and an owner.",
+    starter: `SET station_id TO 42
+SET has_owner TO TRUE
+IF station_id IS GREATER THAN 0 AND has_owner IS EQUAL TO TRUE THEN
+    DISPLAY "Record valid"
+ELSE
+    DISPLAY "Record invalid"
+END IF`,
+    expectedOutput: ["Record valid"],
+    relatedArticleId: "data-modeling",
+  },
+  {
+    id: "authorization-check",
+    callSign: "SIM-11",
+    title: "Authorization check",
+    objective: "Deny an authenticated pilot who lacks airlock permission.",
+    starter: `SET authenticated TO TRUE
+SET can_open_airlock TO FALSE
+IF authenticated AND can_open_airlock THEN
+    DISPLAY "Access granted"
+ELSE
+    DISPLAY "Access denied"
+END IF`,
+    expectedOutput: ["Access denied"],
+    relatedArticleId: "authentication-and-authorization",
+  },
+  {
+    id: "workflow-transition",
+    callSign: "SIM-12",
+    title: "Workflow transition",
+    objective: "Move a relay through queued, running, and completed states.",
+    starter: `SET relay_state TO "queued"
+IF relay_state IS EQUAL TO "queued" THEN
+    SET relay_state TO "running"
+END IF
+IF relay_state IS EQUAL TO "running" THEN
+    SET relay_state TO "completed"
+END IF
+DISPLAY relay_state`,
+    expectedOutput: ["completed"],
+    relatedArticleId: "workflows-and-state-machines",
+  },
+  {
+    id: "idempotent-retry",
+    callSign: "SIM-13",
+    title: "Idempotent retry",
+    objective: "Retry an operation without applying its side effect twice.",
+    starter: `SET applied_count TO 0
+SET already_processed TO FALSE
+IF NOT already_processed THEN
+    SET applied_count TO applied_count + 1
+    SET already_processed TO TRUE
+END IF
+IF NOT already_processed THEN
+    SET applied_count TO applied_count + 1
+END IF
+DISPLAY applied_count`,
+    expectedOutput: ["1"],
+    relatedArticleId: "reliable-processing-and-idempotency",
+  },
+  {
+    id: "queue-burst",
+    callSign: "SIM-14",
+    title: "Queue burst",
+    objective: "Process two buffered relay jobs in their queued order.",
+    starter: `SET relay_queue TO ["job-a", "job-b"]
+FOR EACH job IN relay_queue
+    DISPLAY job
+END FOR`,
+    expectedOutput: ["job-a", "job-b"],
+    relatedArticleId: "messaging-and-queues",
+  },
+  {
+    id: "observable-failure",
+    callSign: "SIM-15",
+    title: "Observable failure",
+    objective: "Emit a correlated diagnostic signal for a failed request.",
+    starter: `SET request_id TO "req-42"
+SET outcome TO "failed"
+DISPLAY request_id + ": " + outcome`,
+    expectedOutput: ["req-42: failed"],
+    relatedArticleId: "logging-and-observability",
   },
 ];

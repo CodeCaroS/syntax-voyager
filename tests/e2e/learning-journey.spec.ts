@@ -1,6 +1,36 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import articles from "../../app/generated-content.json" with { type: "json" };
-import { galaxies } from "../../lib/voyage";
+import {
+  expeditions,
+  flightPlans,
+  galaxies,
+  galaxyGates,
+  labChallenges,
+  missionStepHref,
+  missionStepTargetId,
+  missionStepType,
+} from "../../lib/voyage";
+
+const STORAGE_KEY = "syntax-voyager:flight-log:v1";
+
+function watchBrowserErrors(page: Page) {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  return errors;
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+    )
+    .toBe(true);
+}
 
 const firstGalaxyMissionIds = articles
   .filter((article) => galaxies[0].includes(article.order))
@@ -112,12 +142,13 @@ test("passing a black hole test warps directly to the next galaxy", async ({
     );
   }, firstGalaxyMissionIds);
   await page.reload();
+  await expect(galaxyGate).toBeEnabled();
   await page
     .getByRole("button", {
       name: "Unselect focused sun and return to galaxy overview",
     })
     .click();
-  await expect(galaxyGate).toBeEnabled();
+  await expect(galaxyGate).toBeVisible();
 
   await galaxyGate.click();
   await page.getByLabel("A loop").check();
@@ -135,30 +166,52 @@ test("passing a black hole test warps directly to the next galaxy", async ({
   });
 });
 
-test("lesson mastery and expedition progress survive reloads", async ({
+test("one mission thread carries a lesson into its SIM and next lesson", async ({
   page,
 }) => {
-  await page.goto("/articles/values-and-variables");
+  await page.goto("/mission-control");
+  const mission = page.locator(".expedition-board article").first();
+  await expect(mission).toContainText("Restore the docking sequence");
+  await mission.getByRole("link", { name: "Open lesson" }).first().click();
+
+  await expect(page).toHaveURL(
+    /\/articles\/values-and-variables\?mission=guessing-signal&step=store-target/,
+  );
+  await expect(
+    page.getByLabel("Flight log"),
+  ).toContainText("Restore the docking sequence");
   await expect(page.getByText(/Coordinate visited/)).toBeVisible();
   await page.getByRole("button", { name: "Confirm mastery" }).click();
-  await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Reopen training" }),
-  ).toHaveAttribute("aria-pressed", "true");
 
-  await page.getByRole("link", { name: "Mission" }).click();
-  await expect(page.getByText("1/12 mastered").first()).toBeVisible();
-
-  const checkpoint = page.getByRole("button", {
-    name: "Complete Store the hidden coordinate",
+  await page
+    .getByRole("link", { name: /Correct the fuel signal/ })
+    .click();
+  await expect(page).toHaveURL(
+    /\/lab\?challenge=fuel-correction&mission=guessing-signal&step=correct-fuel/,
+  );
+  const missionRoute = page.getByRole("navigation", {
+    name: "Mission route",
   });
-  await checkpoint.click();
+  await expect(missionRoute).toContainText(
+    "Pass this SIM to unlock the next stage",
+  );
+
+  await page.getByRole("button", { name: "Check mission" }).click();
+  await expect(page.getByText("Mission passed")).toBeVisible();
+  await expect(missionRoute).toContainText("Stage 2 complete");
+  await missionRoute
+    .getByRole("link", { name: "Next: Learn clearance decisions" })
+    .click();
+  await expect(page).toHaveURL(
+    /\/articles\/conditions\?mission=guessing-signal&step=compare-guess/,
+  );
+
+  await page.getByRole("link", { name: "Mission", exact: true }).click();
+  await expect(page).toHaveURL(/\/mission-control$/);
   await page.reload();
-  await expect(
-    page.getByRole("button", {
-      name: "Reopen Store the hidden coordinate",
-    }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".expedition-board article").first()).toContainText(
+    "2/8 stages",
+  );
 });
 
 test("the simulator exposes pass, failure, stepping, and persisted results", async ({
@@ -181,4 +234,353 @@ test("the simulator exposes pass, failure, stepping, and persisted results", asy
   await page.getByRole("button", { name: "Reset code" }).click();
   await page.getByRole("button", { name: "Step instruction" }).click();
   await expect(page.getByText("Trace ready")).toBeVisible();
+});
+
+for (const galaxy of galaxies) {
+  test(`every ${galaxy.title} lesson renders without browser errors`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const errors = watchBrowserErrors(page);
+    const galaxyArticles = articles.filter((article) =>
+      galaxy.includes(article.order),
+    );
+
+    for (const article of galaxyArticles) {
+      await test.step(article.id, async () => {
+        const response = await page.goto(`/articles/${article.id}`, {
+          waitUntil: "domcontentloaded",
+        });
+        expect(response?.status(), article.id).toBe(200);
+        await expect(
+          page.locator(".article-header").getByRole("heading", {
+            level: 1,
+            name: article.title,
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(page.getByText("Lesson objective")).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "Article navigation" }),
+        ).toBeVisible();
+      });
+    }
+
+    expect(errors).toEqual([]);
+  });
+}
+
+test("every guided mission stage opens the intended lesson or SIM context", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  for (const mission of expeditions) {
+    for (const [index, step] of mission.steps.entries()) {
+      await test.step(`${mission.id}/${step.id}`, async () => {
+        const response = await page.goto(missionStepHref(mission.id, step), {
+          waitUntil: "domcontentloaded",
+        });
+        expect(response?.status()).toBe(200);
+
+        if (missionStepType(step) === "lesson") {
+          const article = articles.find(
+            (candidate) => candidate.id === missionStepTargetId(step),
+          );
+          expect(article).toBeTruthy();
+          await expect(
+            page.locator(".article-header").getByRole("heading", {
+              level: 1,
+              name: article!.title,
+              exact: true,
+            }),
+          ).toBeVisible();
+          await expect(page.getByLabel("Flight log")).toContainText(
+            `${mission.callSign} · Step ${index + 1}/${mission.steps.length}`,
+          );
+          await expect(page.getByLabel("Flight log")).toContainText(
+            mission.title,
+          );
+        } else {
+          const challenge = labChallenges.find(
+            (candidate) => candidate.id === missionStepTargetId(step),
+          );
+          expect(challenge).toBeTruthy();
+          await expect(
+            page.getByRole("heading", {
+              level: 2,
+              name: challenge!.title,
+              exact: true,
+            }),
+          ).toBeVisible();
+          await expect(
+            page.getByRole("navigation", { name: "Mission route" }),
+          ).toContainText("Pass this SIM to unlock the next stage");
+          await expect(page.locator(".simulation-brief")).toContainText(
+            mission.title,
+          );
+        }
+      });
+    }
+  }
+});
+
+test("every simulator starter passes in the browser without duplicate records", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/");
+  await page.evaluate((key) => window.localStorage.removeItem(key), STORAGE_KEY);
+
+  for (const [index, challenge] of labChallenges.entries()) {
+    await test.step(challenge.id, async () => {
+      await page.goto(`/lab?challenge=${challenge.id}`);
+      await expect(
+        page.getByRole("heading", {
+          level: 2,
+          name: challenge.title,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.getByLabel("Pseudocode program")).toHaveValue(
+        challenge.starter,
+      );
+      await expect(
+        page.getByRole("link", { name: "Open related lesson" }),
+      ).toHaveAttribute("href", `/articles/${challenge.relatedArticleId}`);
+
+      await page.getByRole("button", { name: "Check mission" }).click();
+      await expect(page.locator("[data-status]")).toHaveText("Mission passed");
+      for (const output of challenge.expectedOutput) {
+        await expect(page.locator(".runtime-grid")).toContainText(output);
+      }
+
+      if (index === 0) {
+        await page.getByRole("button", { name: "Check mission" }).click();
+      }
+    });
+  }
+
+  const passed = await page.evaluate((key) => {
+    const stored = window.localStorage.getItem(key);
+    return stored ? JSON.parse(stored).passedLabChallenges : [];
+  }, STORAGE_KEY);
+  expect([...passed].sort()).toEqual(
+    labChallenges.map((challenge) => challenge.id).sort(),
+  );
+});
+
+test("mission control persists plans, expands manifests, and safely resets storage", async ({
+  page,
+}) => {
+  await page.goto("/mission-control");
+  await expect(page.locator(".mission-telemetry dd").first()).toHaveText(
+    /^\d+$/,
+  );
+
+  const firstGalaxy = galaxies[0];
+  const firstManifest = page.locator(".sector-manifest").first();
+  await firstManifest.getByText("Coordinate manifest").click();
+  await expect(firstManifest).toHaveAttribute("open", "");
+  await expect(firstManifest.getByRole("listitem")).toHaveCount(
+    articles.filter((article) => firstGalaxy.includes(article.order)).length,
+  );
+  await firstManifest.getByText("Coordinate manifest").click();
+  await expect(firstManifest).not.toHaveAttribute("open", "");
+
+  for (const plan of flightPlans) {
+    const option = page.getByRole("button", {
+      name: new RegExp(plan.title),
+    });
+    await option.click();
+    await expect(option).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".active-flight-plan h3")).toHaveText(plan.title);
+  }
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", {
+      name: new RegExp(flightPlans.at(-1)!.title),
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Reset flight log" }).click();
+  await page.getByRole("button", { name: "Keep flight log" }).click();
+  await expect(
+    page.getByRole("button", {
+      name: new RegExp(flightPlans.at(-1)!.title),
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Reset flight log" }).click();
+  await page.getByRole("button", { name: "Confirm reset" }).click();
+  await expect(
+    page.getByRole("button", { name: new RegExp(flightPlans[0].title) }),
+  ).toHaveAttribute("aria-pressed", "true");
+  const telemetry = page.locator(".mission-telemetry");
+  for (const [label, value] of [
+    ["Coordinates visited", "0"],
+    ["Mastery signals", "0"],
+    ["Mission stages", `0/${expeditions.flatMap((mission) => mission.steps).length}`],
+    ["Lab simulations", "0"],
+  ]) {
+    await expect(
+      telemetry.locator("div").filter({ hasText: label }).locator("dd"),
+    ).toHaveText(value);
+  }
+  await expect
+    .poll(() =>
+      page.evaluate((key) => window.localStorage.getItem(key), STORAGE_KEY),
+    )
+    .toBeNull();
+
+  await page.evaluate(
+    ({ key, value }) => window.localStorage.setItem(key, value),
+    { key: STORAGE_KEY, value: "{not-json" },
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: new RegExp(flightPlans[0].title) }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("article controls translate examples, persist mastery, and reject mismatched mission context", async ({
+  page,
+}) => {
+  await page.goto("/articles/values-and-variables");
+  await expect(page.getByLabel("Flight log")).toContainText(
+    /Coordinate visited|Mastery signal confirmed/,
+  );
+
+  const bridge = page.locator(".language-bridge").first();
+  for (const language of ["TypeScript", "Python", "Java", "Pseudocode"]) {
+    await bridge.getByRole("button", { name: `Show ${language}` }).click();
+    await expect(bridge.locator("code")).toHaveAttribute(
+      "data-language",
+      language.toLowerCase(),
+    );
+  }
+
+  const mastery = page.getByRole("button", { name: "Confirm mastery" });
+  await mastery.click();
+  await expect(
+    page.getByRole("button", { name: "Reopen training" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Reopen training" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Reopen training" }).click();
+  await expect(mastery).toHaveAttribute("aria-pressed", "false");
+
+  const headingLink = page
+    .getByRole("navigation", { name: "On this page" })
+    .getByRole("link")
+    .first();
+  const headingHref = await headingLink.getAttribute("href");
+  await headingLink.click();
+  await expect(page).toHaveURL(new RegExp(`${headingHref}$`));
+
+  await page.goto(
+    "/articles/values-and-variables?mission=guessing-signal&step=correct-fuel",
+  );
+  await expect(page.getByLabel("Flight log")).toContainText("Origin sector");
+  await expect(page.getByLabel("Flight log")).not.toContainText(
+    "Restore the docking sequence",
+  );
+});
+
+test("all galaxy gates validate a wrong answer before unlocking the next sector", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await page.evaluate(
+    ({ key, masteredArticleIds }) => {
+      window.localStorage.setItem(
+        key,
+        JSON.stringify({
+          activePlanId: "cadet-launch",
+          visitedArticleIds: masteredArticleIds,
+          masteredArticleIds,
+          completedExpeditionSteps: {},
+          passedLabChallenges: [],
+          passedGalaxyGates: [],
+        }),
+      );
+    },
+    {
+      key: STORAGE_KEY,
+      masteredArticleIds: articles.map((article) => article.id),
+    },
+  );
+  await page.reload();
+  await page
+    .getByRole("button", {
+      name: "Unselect focused sun and return to galaxy overview",
+    })
+    .click();
+
+  for (const [index, gate] of galaxyGates.entries()) {
+    const gateButton = page.locator(".galaxy-gate");
+    await expect(gateButton).toBeEnabled();
+    await gateButton.click();
+
+    const submit = page.getByRole("button", { name: "Cross event horizon" });
+    await expect(submit).toBeDisabled();
+    await page
+      .getByLabel(
+        gate.answers.find((answer) => answer !== gate.correctAnswer)!,
+      )
+      .check();
+    await submit.click();
+    await expect(page.getByRole("alert")).toContainText("Signal rejected");
+
+    await page.getByLabel(gate.correctAnswer).check();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await submit.click();
+    await expect(page.getByLabel("Visit galaxy").locator("option")).toHaveCount(
+      index + 2,
+    );
+    await expect(page.locator(".galaxy-entry")).toHaveAttribute(
+      "data-active",
+      "false",
+    );
+  }
+
+  await expect(page.locator(".galaxy-gate")).toContainText("Gates cleared");
+  await page.locator(".galaxy-gate").click();
+  await expect(page.getByText("Every knowledge galaxy is online.")).toBeVisible();
+  await page.getByRole("button", { name: "Close galaxy test" }).click();
+});
+
+test("primary views remain usable without horizontal overflow on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const routes = [
+    "/",
+    "/mission-control",
+    "/articles/values-and-variables",
+    "/lab?challenge=fuel-correction",
+  ];
+
+  for (const route of routes) {
+    await test.step(route, async () => {
+      await page.goto(route);
+      await expect(page.getByRole("main").first()).toBeVisible();
+      await expect(
+        page.getByRole("navigation", { name: "View navigation" }),
+      ).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+});
+
+test("unknown article routes return a real not-found response", async ({
+  page,
+}) => {
+  const response = await page.goto("/articles/not-a-real-coordinate");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByText(/not found/i).first()).toBeVisible();
 });

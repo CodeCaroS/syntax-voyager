@@ -1998,6 +1998,14 @@ input,
   gap: 7px;
 }
 
+.expedition-board li em {
+  color: var(--signal);
+  font: 7px/1 var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .expedition-board li strong {
   color: #c7d6d3;
   font: 700 11px/1.2 var(--font-mono);
@@ -2025,19 +2033,18 @@ input,
   text-underline-offset: 4px;
 }
 
-.expedition-board li button {
+.expedition-board .mission-step-status {
+  display: grid;
   width: 36px;
   height: 36px;
+  place-items: center;
   border: 1px solid var(--line);
   background: transparent;
   color: #809b97;
-  cursor: pointer;
   font: 18px/1 var(--font-mono);
 }
 
-.expedition-board li button:hover,
-.expedition-board li button:focus-visible,
-.expedition-board li button[aria-pressed="true"] {
+.expedition-board li[data-complete="true"] .mission-step-status {
   border-color: var(--signal);
   background: var(--signal);
   color: #04100e;
@@ -2346,6 +2353,15 @@ input,
   text-transform: uppercase;
 }
 
+.simulation-brief > div > small {
+  display: block;
+  margin-top: 10px;
+  color: #809b97;
+  font: 8px/1.4 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .simulation-brief > p {
   margin: 0;
   color: #8ba19d;
@@ -2384,6 +2400,31 @@ input,
 .simulation-brief dd[data-status="failed"],
 .runtime-error {
   color: #ff8b85;
+}
+
+.mission-thread-bar {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--signal-soft);
+  color: #9db2ae;
+  font: 8px/1.4 var(--font-mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.mission-thread-bar a {
+  color: var(--signal);
+}
+
+.mission-thread-bar a:hover,
+.mission-thread-bar a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .simulation-editor {

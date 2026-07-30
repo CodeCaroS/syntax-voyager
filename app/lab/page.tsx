@@ -10,8 +10,18 @@ export const metadata: Metadata = {
 export default async function LabPage({
   searchParams,
 }: {
-  searchParams: Promise<{ challenge?: string }>;
+  searchParams: Promise<{
+    challenge?: string;
+    mission?: string;
+    step?: string;
+  }>;
 }) {
-  const { challenge } = await searchParams;
-  return <PseudocodeLab initialChallengeId={challenge} />;
+  const { challenge, mission, step } = await searchParams;
+  return (
+    <PseudocodeLab
+      initialChallengeId={challenge}
+      missionId={mission}
+      missionStepId={step}
+    />
+  );
 }

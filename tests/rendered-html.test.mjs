@@ -71,7 +71,7 @@ test("server-renders a static article coordinate", async () => {
 
   const html = await response.text();
   assert.match(html, /Values and Variables/);
-  assert.match(html, /Mission objective/);
+  assert.match(html, /Lesson objective/);
   assert.match(html, /Exercise: Trace the journey/);
   assert.match(html, /Algorithms and Pseudocode/);
   assert.match(html, /aria-label="On this page"/);
@@ -110,10 +110,10 @@ test("server-renders mission control with galaxies, routes, and expeditions", as
   assert.match(html, /Next learning step/);
   assert.match(html, /Continue route/);
   assert.match(html, /starmap-underlay/);
-  assert.match(html, /Expedition campaigns/);
+  assert.match(html, />Missions</);
   assert.match(html, /Origin sector/);
   assert.match(html, /Reliability commander/);
-  assert.match(html, /Decode the guessing signal/);
+  assert.match(html, /Restore the docking sequence/);
   assert.match(html, /Coordinate manifest/);
   assert.doesNotMatch(
     html,

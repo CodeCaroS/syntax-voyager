@@ -40,10 +40,13 @@ export async function generateMetadata({
 
 export default async function ArticlePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ mission?: string; step?: string }>;
 }) {
   const { id } = await params;
+  const { mission, step } = await searchParams;
   const article = getArticle(id);
   if (!article) notFound();
 
@@ -118,11 +121,13 @@ export default async function ArticlePage({
               <span>Reviewed {article.lastReviewed}</span>
             </div>
             <div className="learning-goal">
-              <span>Mission objective</span>
+              <span>Lesson objective</span>
               <p>{article.learningGoal}</p>
             </div>
             <LessonFlightRecorder
               articleId={article.id}
+              missionId={mission}
+              missionStepId={step}
               order={article.order}
               routeArticles={articles.map(({ id: routeId, title }) => ({
                 id: routeId,

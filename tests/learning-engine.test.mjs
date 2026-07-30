@@ -14,7 +14,12 @@ import {
   flightPlans,
   galaxies,
   galaxyGates,
+  getMissionStepContext,
   labChallenges,
+  missionStepCompleted,
+  missionStepHref,
+  missionStepTargetId,
+  missionStepType,
   nextArticleIdForPlan,
 } from "../lib/voyage.ts";
 
@@ -22,6 +27,9 @@ const articles = JSON.parse(
   await readFile(new URL("../app/generated-content.json", import.meta.url)),
 );
 const articleIds = new Set(articles.map((article) => article.id));
+const labChallengeIds = new Set(
+  labChallenges.map((challenge) => challenge.id),
+);
 
 test("every article belongs to exactly one knowledge galaxy", () => {
   for (const article of articles) {
@@ -42,7 +50,7 @@ test("each galaxy transition has a valid black hole gate", () => {
   });
 });
 
-test("flight plans and expedition article checkpoints use real coordinates", () => {
+test("flight plans and mission stages use real lessons or simulations", () => {
   for (const plan of flightPlans) {
     assert.ok(plan.articleIds.length > 0, `${plan.id} has no coordinates`);
     for (const id of plan.articleIds)
@@ -52,13 +60,72 @@ test("flight plans and expedition article checkpoints use real coordinates", () 
   for (const expedition of expeditions) {
     assert.ok(expedition.steps.length >= 4);
     for (const step of expedition.steps) {
-      if (!step.href.startsWith("/articles/")) continue;
-      assert.ok(
-        articleIds.has(step.href.slice("/articles/".length)),
-        `${expedition.id} references missing ${step.href}`,
+      const targetId = missionStepTargetId(step);
+      const targets =
+        missionStepType(step) === "lesson" ? articleIds : labChallengeIds;
+      assert.ok(targets.has(targetId), `${expedition.id} references missing ${step.href}`);
+    }
+  }
+});
+
+test("missions keep one ordered thread across lessons and simulations", () => {
+  const mission = expeditions[0];
+  const lesson = mission.steps[0];
+  const simulation = mission.steps[1];
+
+  assert.equal(missionStepType(lesson), "lesson");
+  assert.equal(missionStepType(simulation), "simulation");
+  assert.equal(missionStepTargetId(lesson), "values-and-variables");
+  assert.equal(missionStepTargetId(simulation), "fuel-correction");
+  assert.match(
+    missionStepHref(mission.id, simulation),
+    /challenge=fuel-correction&mission=guessing-signal&step=correct-fuel/,
+  );
+  assert.equal(
+    getMissionStepContext(mission.id, lesson.id)?.nextStep.id,
+    simulation.id,
+  );
+  assert.equal(
+    missionStepCompleted(lesson, ["values-and-variables"], []),
+    true,
+  );
+  assert.equal(
+    missionStepCompleted(simulation, [], ["fuel-correction"]),
+    true,
+  );
+  for (const candidate of expeditions) {
+    assert.equal(
+      candidate.steps.length % 2,
+      0,
+      `${candidate.id} must contain lesson/SIM pairs`,
+    );
+    for (let index = 0; index < candidate.steps.length; index += 2) {
+      const lessonStep = candidate.steps[index];
+      const simulationStep = candidate.steps[index + 1];
+      assert.equal(missionStepType(lessonStep), "lesson");
+      assert.equal(missionStepType(simulationStep), "simulation");
+      assert.equal(
+        labChallenges.find(
+          (challenge) =>
+            challenge.id === missionStepTargetId(simulationStep),
+        )?.relatedArticleId,
+        missionStepTargetId(lessonStep),
+        `${candidate.id} step ${index + 1} has no matching SIM`,
       );
     }
   }
+  assert.deepEqual(
+    [
+      ...new Set(
+        expeditions.flatMap((candidate) =>
+          candidate.steps
+            .filter((step) => missionStepType(step) === "simulation")
+            .map(missionStepTargetId),
+        ),
+      ),
+    ].sort(),
+    [...labChallengeIds].sort(),
+  );
 });
 
 test("flight plans resolve one clear next learning coordinate", () => {

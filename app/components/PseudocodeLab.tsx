@@ -8,7 +8,13 @@ import {
   type ExecutionResult,
   type RuntimeValue,
 } from "@/lib/pseudocode";
-import { labChallenges } from "@/lib/voyage";
+import {
+  getMissionStepContext,
+  labChallenges,
+  missionStepHref,
+  missionStepTargetId,
+  missionStepType,
+} from "@/lib/voyage";
 import { useVoyageProgress } from "./useVoyageProgress";
 import ViewNavigation from "./ViewNavigation";
 
@@ -25,8 +31,12 @@ function formatValue(value: RuntimeValue): string {
 
 export default function PseudocodeLab({
   initialChallengeId,
+  missionId,
+  missionStepId,
 }: {
   initialChallengeId?: string;
+  missionId?: string;
+  missionStepId?: string;
 }) {
   const initialChallenge =
     labChallenges.find((challenge) => challenge.id === initialChallengeId) ??
@@ -42,6 +52,17 @@ export default function PseudocodeLab({
   const challenge =
     labChallenges.find((candidate) => candidate.id === challengeId) ??
     labChallenges[0];
+  const requestedMission = getMissionStepContext(missionId, missionStepId);
+  const activeMission =
+    requestedMission &&
+    missionStepType(requestedMission.step) === "simulation" &&
+    missionStepTargetId(requestedMission.step) === challenge.id
+      ? requestedMission
+      : null;
+  const missionNext = activeMission?.nextStep;
+  const challengePassed =
+    status === "passed" ||
+    progress.passedLabChallenges.includes(challenge.id);
   const frame =
     result && frameIndex >= 0 ? result.frames[frameIndex] : undefined;
   const variables = frame?.variables ?? result?.variables ?? {};
@@ -160,10 +181,19 @@ export default function PseudocodeLab({
         <section className="simulation-workbench">
           <header className="simulation-brief">
             <div>
-              <span>{challenge.callSign} / ACTIVE SIMULATION</span>
+              <span>
+                {activeMission
+                  ? `${activeMission.mission.callSign} / STEP ${
+                      activeMission.stepIndex + 1
+                    }/${activeMission.mission.steps.length} / SIM`
+                  : `${challenge.callSign} / ACTIVE SIMULATION`}
+              </span>
               <h2>{challenge.title}</h2>
+              {activeMission ? (
+                <small>{activeMission.mission.title}</small>
+              ) : null}
             </div>
-            <p>{challenge.objective}</p>
+            <p>{activeMission?.step.brief ?? challenge.objective}</p>
             <dl>
               <div>
                 <dt>Expected transmission</dt>
@@ -183,6 +213,33 @@ export default function PseudocodeLab({
               </div>
             </dl>
           </header>
+
+          {activeMission ? (
+            <nav className="mission-thread-bar" aria-label="Mission route">
+              <span>
+                {challengePassed
+                  ? `Stage ${activeMission.stepIndex + 1} complete`
+                  : "Pass this SIM to unlock the next stage"}
+              </span>
+              {challengePassed ? (
+                <Link
+                  href={
+                    missionNext
+                      ? missionStepHref(activeMission.mission.id, missionNext)
+                      : "/mission-control#missions"
+                  }
+                >
+                  {missionNext
+                    ? `Next: ${missionNext.title}`
+                    : "Mission complete · Return to control"}
+                </Link>
+              ) : (
+                <small>
+                  Next: {missionNext?.title ?? "Return to mission control"}
+                </small>
+              )}
+            </nav>
+          ) : null}
 
           <div className="simulation-editor">
             <div className="editor-toolbar">

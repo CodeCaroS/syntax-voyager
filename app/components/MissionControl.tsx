@@ -7,6 +7,9 @@ import {
   flightPlans,
   galaxies,
   galaxyForOrder,
+  missionStepCompleted,
+  missionStepHref,
+  missionStepType,
   nextArticleIdForPlan,
   type GalaxyId,
 } from "@/lib/voyage";
@@ -19,10 +22,6 @@ interface MissionArticle {
   summary: string;
   order: number;
   level: string;
-}
-
-function unique(values: string[]) {
-  return [...new Set(values)];
 }
 
 const totalExpeditionSteps = expeditions.reduce(
@@ -73,27 +72,17 @@ export default function MissionControl({
     : undefined;
   const completedExpeditionSteps = useMemo(
     () =>
-      Object.values(progress.completedExpeditionSteps).reduce(
-        (total, steps) => total + steps.length,
-        0,
-      ),
-    [progress.completedExpeditionSteps],
+      expeditions
+        .flatMap((mission) => mission.steps)
+        .filter((step) =>
+          missionStepCompleted(
+            step,
+            progress.masteredArticleIds,
+            progress.passedLabChallenges,
+          ),
+        ).length,
+    [progress.masteredArticleIds, progress.passedLabChallenges],
   );
-
-  const toggleExpeditionStep = (expeditionId: string, stepId: string) => {
-    updateProgress((current) => {
-      const completed = current.completedExpeditionSteps[expeditionId] ?? [];
-      return {
-        ...current,
-        completedExpeditionSteps: {
-          ...current.completedExpeditionSteps,
-          [expeditionId]: completed.includes(stepId)
-            ? completed.filter((id) => id !== stepId)
-            : unique([...completed, stepId]),
-        },
-      };
-    });
-  };
 
   return (
     <main className="mission-control-page" id="main-content">
@@ -121,8 +110,8 @@ export default function MissionControl({
           <p className="eyebrow">[ EDU-SYS / MISSION CONTROL ]</p>
           <h1>Your route through knowledge space.</h1>
           <p>
-            Choose a flight plan, clear lesson coordinates, and combine them
-            into expeditions. The flight log stays on this device.
+            Choose a mission, learn each concept in its lesson, and prove it
+            in the simulator. The flight log stays on this device.
           </p>
         </div>
         <section className="mission-next-step" aria-labelledby="next-step-title">
@@ -166,7 +155,7 @@ export default function MissionControl({
             <dd>{ready ? progress.masteredArticleIds.length : "—"}</dd>
           </div>
           <div>
-            <dt>Expedition checks</dt>
+            <dt>Mission stages</dt>
             <dd>
               {ready
                 ? `${completedExpeditionSteps}/${totalExpeditionSteps}`
@@ -332,21 +321,30 @@ export default function MissionControl({
         </article>
       </section>
 
-      <section className="control-section" aria-labelledby="expeditions-title">
+      <section
+        className="control-section"
+        id="missions"
+        aria-labelledby="expeditions-title"
+      >
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Campaign board</p>
-            <h2 id="expeditions-title">Expedition campaigns</h2>
+            <p className="eyebrow">Guided routes</p>
+            <h2 id="expeditions-title">Missions</h2>
           </div>
           <p>
-            Each campaign combines several coordinates into one practical
-            mission. Open a checkpoint, do the work, then confirm it here.
+            Every mission is one ordered thread: open the lesson briefing,
+            confirm mastery, pass the matching SIM check, then continue.
           </p>
         </div>
         <div className="expedition-board">
           {expeditions.map((expedition) => {
-            const completed =
-              progress.completedExpeditionSteps[expedition.id] ?? [];
+            const completed = expedition.steps.filter((step) =>
+              missionStepCompleted(
+                step,
+                progress.masteredArticleIds,
+                progress.passedLabChallenges,
+              ),
+            );
             return (
               <article key={expedition.id}>
                 <header>
@@ -357,32 +355,40 @@ export default function MissionControl({
                 <p>{expedition.summary}</p>
                 <ol>
                   {expedition.steps.map((step, index) => {
-                    const checked = completed.includes(step.id);
+                    const checked = completed.some(
+                      (completedStep) => completedStep.id === step.id,
+                    );
+                    const type = missionStepType(step);
                     return (
                       <li data-complete={checked} key={step.id}>
                         <span>{(index + 1).toString().padStart(2, "0")}</span>
                         <div>
+                          <em>
+                            {type === "lesson"
+                              ? "Lesson briefing"
+                              : "SIM mission"}
+                          </em>
                           <strong>{step.title}</strong>
                           <small>{step.brief}</small>
-                          <Link href={step.href}>Open checkpoint</Link>
+                          <Link href={missionStepHref(expedition.id, step)}>
+                            Open {type === "lesson" ? "lesson" : "SIM mission"}
+                          </Link>
                         </div>
-                        <button
-                          type="button"
-                          aria-pressed={checked}
-                          aria-label={`${checked ? "Reopen" : "Complete"} ${step.title}`}
-                          onClick={() =>
-                            toggleExpeditionStep(expedition.id, step.id)
-                          }
+                        <span
+                          className="mission-step-status"
+                          aria-label={`${step.title}: ${
+                            checked ? "complete" : "not complete"
+                          }`}
                         >
-                          {checked ? "✓" : "○"}
-                        </button>
+                          {checked ? "✓" : "→"}
+                        </span>
                       </li>
                     );
                   })}
                 </ol>
                 <footer>
                   <span>
-                    {completed.length}/{expedition.steps.length} checks
+                    {completed.length}/{expedition.steps.length} stages
                   </span>
                   <div
                     className="signal-meter"
@@ -414,7 +420,7 @@ export default function MissionControl({
         </div>
         {confirmingReset ? (
           <div className="reset-confirmation">
-            <p>This removes every local mastery and expedition record.</p>
+            <p>This removes every local lesson, mission, and SIM record.</p>
             <button
               type="button"
               onClick={() => {
