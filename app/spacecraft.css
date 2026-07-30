@@ -534,11 +534,44 @@ input,
 
 .galaxy-page .universe-controls {
   display: grid;
-  grid-template-columns: repeat(6, auto);
+  grid-template-columns: minmax(180px, 1fr) repeat(6, auto);
   border-color: var(--line);
   background: #07100f;
   box-shadow: none;
   backdrop-filter: none;
+}
+
+.galaxy-picker {
+  display: grid;
+  grid-template-columns: auto minmax(116px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border-right: 1px solid var(--line);
+}
+
+.galaxy-picker span {
+  color: var(--signal);
+  font: 700 7px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.galaxy-picker select {
+  min-width: 0;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  background: #050b0b;
+  color: var(--paper);
+  cursor: pointer;
+  font: 8px/1 var(--font-mono);
+}
+
+.galaxy-picker select:focus-visible {
+  border-color: var(--signal);
+  outline: 1px solid var(--signal);
+  outline-offset: 1px;
 }
 
 .galaxy-page .universe-controls button,
@@ -2388,6 +2421,11 @@ input,
 
   .galaxy-page .universe-controls {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .galaxy-picker {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .galaxy-page .universe-controls button,

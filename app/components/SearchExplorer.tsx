@@ -117,6 +117,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const [gateFeedback, setGateFeedback] = useState("");
   const [unlockedGalaxyTitle, setUnlockedGalaxyTitle] = useState("");
   const [galaxyEntryActive, setGalaxyEntryActive] = useState(false);
+  const [activeGalaxyTitle, setActiveGalaxyTitle] = useState(
+    articles[0]?.galaxy ?? galaxies[0].title,
+  );
   const selectedIdRef = useRef(selectedId);
   const { progress, ready, updateProgress } = useVoyageProgress();
   const gateIndex = ready
@@ -126,19 +129,27 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     : 0;
   const activeGate = gateIndex >= 0 ? galaxyGates[gateIndex] : null;
   const nextGalaxy = gateIndex >= 0 ? galaxies[gateIndex + 1] : null;
-  const unlockedGalaxyTitles = useMemo(
-    () =>
-      new Set(
-        galaxies
-          .slice(0, gateIndex < 0 ? galaxies.length : gateIndex + 1)
-          .map((galaxy) => galaxy.title),
-      ),
+  const unlockedGalaxies = useMemo(
+    () => galaxies.slice(0, gateIndex < 0 ? galaxies.length : gateIndex + 1),
     [gateIndex],
+  );
+  const activeGalaxy =
+    unlockedGalaxies.find((galaxy) => galaxy.title === activeGalaxyTitle) ??
+    unlockedGalaxies[0] ??
+    galaxies[0];
+  const unlockedArticles = useMemo(
+    () =>
+      articles.filter((article) =>
+        unlockedGalaxies.some((galaxy) => galaxy.title === article.galaxy),
+      ),
+    [articles, unlockedGalaxies],
   );
   const navigableArticles = useMemo(
     () =>
-      articles.filter((article) => unlockedGalaxyTitles.has(article.galaxy)),
-    [articles, unlockedGalaxyTitles],
+      unlockedArticles.filter(
+        (article) => article.galaxy === activeGalaxy.title,
+      ),
+    [activeGalaxy.title, unlockedArticles],
   );
 
   const positions = useMemo(
@@ -331,15 +342,18 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   }, [warpTo]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
-
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
     reducedMotionRef.current = reducedMotion;
     setMotionPaused(reducedMotion);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+
     let animationFrame = 0;
     let width = 0;
     let height = 0;
@@ -1232,6 +1246,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     if (!gateDialogRef.current?.open) gateDialogRef.current?.showModal();
   };
 
+  const visitGalaxy = (galaxyTitle: string) => {
+    cancelWarp();
+    selectedIdRef.current = "";
+    setSelectedId("");
+    setQuery("");
+    setActiveGalaxyTitle(galaxyTitle);
+  };
+
   const submitGalaxyGate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!activeGate || !nextGalaxy || !gateAnswer) return;
@@ -1257,6 +1279,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const enterUnlockedGalaxy = () => {
     gateDialogRef.current?.close();
     if (!unlockedGalaxyTitle) return;
+    setActiveGalaxyTitle(unlockedGalaxyTitle);
     setJourneyPhase("warping");
     setGalaxyEntryActive(true);
   };
@@ -1350,7 +1373,11 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           className="galaxy-gate"
           type="button"
           data-complete={!activeGate}
-          hidden={Boolean(selectedId) || journeyPhase === "warping"}
+          hidden={
+            Boolean(selectedId) ||
+            journeyPhase === "warping" ||
+            Boolean(activeGate && activeGalaxy.id !== activeGate.galaxyId)
+          }
           disabled={!ready}
           onClick={openGalaxyGate}
           aria-label={
@@ -1460,7 +1487,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               ? "Travelling through knowledge space"
               : journeyPhase === "arrived"
                 ? "Coordinate locked"
-                : "Orbiting the knowledge galaxy"}
+                : `Orbiting ${activeGalaxy.title}`}
           </span>
         </div>
 
@@ -1471,7 +1498,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           <span>
             <strong>Syntax Voyager</strong>
             <small>
-              {navigableArticles.length.toString().padStart(2, "0")} /{" "}
+              {unlockedArticles.length.toString().padStart(2, "0")} /{" "}
               {articles.length.toString().padStart(2, "0")} nodes online
             </small>
           </span>
@@ -1537,7 +1564,23 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           ) : null}
         </div>
 
-        <div className="universe-controls" aria-label="3D map controls">
+        <div
+          className="universe-controls"
+          aria-label="Galaxy navigation and 3D map controls"
+        >
+          <label className="galaxy-picker">
+            <span>Visit galaxy</span>
+            <select
+              value={activeGalaxy.title}
+              onChange={(event) => visitGalaxy(event.target.value)}
+            >
+              {unlockedGalaxies.map((galaxy) => (
+                <option key={galaxy.id} value={galaxy.title}>
+                  {galaxy.callSign} — {galaxy.title}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" onClick={() => rotateView(-0.35)}>
             Rotate left
           </button>
