@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import HeadingScrollSpy from "@/app/components/HeadingScrollSpy";
 import LanguageBridge from "@/app/components/LanguageBridge";
 import LessonFlightRecorder from "@/app/components/LessonFlightRecorder";
+import ViewNavigation from "@/app/components/ViewNavigation";
 import {
   articles,
   getArticle,
@@ -60,7 +61,7 @@ export default async function ArticlePage({
 
   return (
     <main className="article-page">
-      <nav className="topbar article-topbar" aria-label="Primary navigation">
+      <header className="topbar article-topbar">
         <Link className="brand" href="/">
           <span className="brand-mark" aria-hidden="true">
             SV
@@ -70,10 +71,11 @@ export default async function ArticlePage({
             <small>Connected software knowledge</small>
           </span>
         </Link>
-        <Link className="nav-link" href="/#explore">
-          Warp search <span aria-hidden="true">↗</span>
-        </Link>
-      </nav>
+        <ViewNavigation
+          current="read"
+          readHref={`/articles/${article.id}`}
+        />
+      </header>
 
       <div className="article-layout">
         <aside className="article-rail">
@@ -119,7 +121,14 @@ export default async function ArticlePage({
               <span>Mission objective</span>
               <p>{article.learningGoal}</p>
             </div>
-            <LessonFlightRecorder articleId={article.id} order={article.order} />
+            <LessonFlightRecorder
+              articleId={article.id}
+              order={article.order}
+              routeArticles={articles.map(({ id: routeId, title }) => ({
+                id: routeId,
+                title,
+              }))}
+            />
           </header>
 
           <div className="article-content">

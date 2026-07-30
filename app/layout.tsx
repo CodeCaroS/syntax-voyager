@@ -1,10 +1,46 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import VoyageShell from "@/app/components/VoyageShell";
+import { articles, getArticleTitle } from "@/lib/content";
+import { galaxyForOrder } from "@/lib/voyage";
 import "./globals.css";
 import "./spacecraft.css";
 
 const description =
   "Navigate connected programming and software-engineering knowledge through galaxies, flight plans, expeditions, and simulations.";
+
+const searchArticles = articles.map(
+  ({
+    id,
+    title,
+    summary,
+    order,
+    level,
+    system,
+    prerequisites,
+    relations,
+    searchText,
+  }) => ({
+    id,
+    title,
+    summary,
+    order,
+    level,
+    system,
+    prerequisites,
+    relations,
+    searchText,
+    galaxy: galaxyForOrder(order).title,
+    tags: Array.from(
+      new Set([
+        ...title.split(/\s+(?:and|&)\s+/i),
+        system.replaceAll("-", " "),
+        ...prerequisites.map(getArticleTitle),
+        ...relations.map((relation) => getArticleTitle(relation.target)),
+      ]),
+    ).slice(0, 8),
+  }),
+);
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -13,8 +49,9 @@ export async function generateMetadata(): Promise<Metadata> {
     requestHeaders.get("host") ??
     "localhost:3000";
   const protocol =
-    requestHeaders.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") ? "http" : "https");
+    host.startsWith("localhost") || host.startsWith("127.0.0.1")
+      ? "http"
+      : (requestHeaders.get("x-forwarded-proto") ?? "https");
   const baseUrl = new URL(`${protocol}://${host}`);
   const imageUrl = new URL("/og.png", baseUrl).toString();
 
@@ -56,7 +93,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <VoyageShell articles={searchArticles}>{children}</VoyageShell>
+      </body>
     </html>
   );
 }

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { galaxyForOrder } from "@/lib/voyage";
+import {
+  flightPlans,
+  galaxyForOrder,
+  nextArticleIdForPlan,
+} from "@/lib/voyage";
 import { useVoyageProgress } from "./useVoyageProgress";
 
 function unique(values: string[]) {
@@ -12,13 +16,26 @@ function unique(values: string[]) {
 export default function LessonFlightRecorder({
   articleId,
   order,
+  routeArticles,
 }: {
   articleId: string;
   order: number;
+  routeArticles: { id: string; title: string }[];
 }) {
   const { progress, ready, updateProgress } = useVoyageProgress();
   const mastered = progress.masteredArticleIds.includes(articleId);
   const galaxy = galaxyForOrder(order);
+  const activePlan =
+    flightPlans.find((plan) => plan.id === progress.activePlanId) ??
+    flightPlans[0];
+  const nextArticleId = nextArticleIdForPlan(
+    activePlan.id,
+    progress.masteredArticleIds,
+    articleId,
+  );
+  const nextArticle = routeArticles.find(
+    (article) => article.id === nextArticleId,
+  );
 
   useEffect(() => {
     updateProgress((current) =>
@@ -61,7 +78,13 @@ export default function LessonFlightRecorder({
       >
         {mastered ? "Reopen training" : "Confirm mastery"}
       </button>
-      <Link href="/mission-control">Mission control</Link>
+      <Link
+        className="lesson-next"
+        href={nextArticle ? `/articles/${nextArticle.id}` : "/mission-control"}
+      >
+        <span>{nextArticle ? `Next · ${activePlan.callSign}` : "Route status"}</span>
+        <strong>{nextArticle?.title ?? "Review mission control"} →</strong>
+      </Link>
     </section>
   );
 }

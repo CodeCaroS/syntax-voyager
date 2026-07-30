@@ -10,7 +10,9 @@ import {
   useRef,
   useState,
 } from "react";
+import BlackHoleGate from "./BlackHoleGate";
 import { useVoyageProgress } from "./useVoyageProgress";
+import ViewNavigation from "./ViewNavigation";
 
 export interface SearchArticle {
   id: string;
@@ -58,14 +60,22 @@ interface WarpState {
   toOrigin: Point3D;
 }
 
+interface GalaxyTransitionState {
+  active: boolean;
+  startedAt: number;
+  duration: number;
+}
+
 type JourneyPhase = "cruising" | "warping" | "arrived";
-type GateResult = "idle" | "passed" | "failed";
+type GateResult = "idle" | "failed";
 
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
 const NODE_RENDER_DISTANCE = 240;
 const ROUTE_RENDER_DISTANCE = 185;
+const GALAXY_WARP_DURATION = 1100;
+const REDUCED_GALAXY_WARP_DURATION = 180;
 const GALAXY_COLORS: Record<string, readonly [number, number, number]> = {
   "Origin sector": [217, 255, 85],
   "Systems frontier": [86, 221, 255],
@@ -108,10 +118,15 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     fromOrigin: { x: 0, y: 0, z: 0 },
     toOrigin: { x: 0, y: 0, z: 0 },
   });
+  const galaxyTransitionRef = useRef<GalaxyTransitionState>({
+    active: false,
+    startedAt: 0,
+    duration: GALAXY_WARP_DURATION,
+  });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(articles[0]?.id ?? "");
   const [journeyPhase, setJourneyPhase] = useState<JourneyPhase>("cruising");
-  const [motionPaused, setMotionPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const [gateAnswer, setGateAnswer] = useState("");
   const [gateResult, setGateResult] = useState<GateResult>("idle");
   const [gateFeedback, setGateFeedback] = useState("");
@@ -129,6 +144,20 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     : 0;
   const activeGate = gateIndex >= 0 ? galaxyGates[gateIndex] : null;
   const nextGalaxy = gateIndex >= 0 ? galaxies[gateIndex + 1] : null;
+  const gateMissions = activeGate
+    ? articles.filter(
+        (article) =>
+          article.galaxy ===
+          galaxies.find((galaxy) => galaxy.id === activeGate.galaxyId)?.title,
+      )
+    : [];
+  const completedGateMissions = gateMissions.filter((article) =>
+    progress.masteredArticleIds.includes(article.id),
+  ).length;
+  const gateLocked = Boolean(
+    activeGate &&
+      (!gateMissions.length || completedGateMissions < gateMissions.length),
+  );
   const unlockedGalaxies = useMemo(
     () => galaxies.slice(0, gateIndex < 0 ? galaxies.length : gateIndex + 1),
     [gateIndex],
@@ -248,13 +277,16 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     if (!galaxyEntryActive) return;
     const timer = window.setTimeout(
       () => {
+        galaxyTransitionRef.current.active = false;
         setGalaxyEntryActive(false);
         setJourneyPhase("arrived");
       },
-      motionPaused || reducedMotionRef.current ? 180 : 880,
+      reducedMotion || reducedMotionRef.current
+        ? REDUCED_GALAXY_WARP_DURATION
+        : GALAXY_WARP_DURATION,
     );
     return () => window.clearTimeout(timer);
-  }, [galaxyEntryActive, motionPaused]);
+  }, [galaxyEntryActive, reducedMotion]);
 
   const warpTo = useCallback(
     (requestedId: string) => {
@@ -342,11 +374,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   }, [warpTo]);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    reducedMotionRef.current = reducedMotion;
-    setMotionPaused(reducedMotion);
+    const animationFrame = window.requestAnimationFrame(() => {
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      reducedMotionRef.current = reducedMotion;
+      setReducedMotion(reducedMotion);
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
   }, []);
 
   useEffect(() => {
@@ -357,27 +392,60 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     let animationFrame = 0;
     let width = 0;
     let height = 0;
-    const galaxyStars = Array.from({ length: 820 }, (_, index) => {
+    const starSeed = (index: number, salt: number) => {
+      const value = Math.sin((index + salt) * 12.9898) * 43758.5453;
+      return value - Math.floor(value);
+    };
+    const starColor = (seed: number) => {
+      const warmth = seed * seed;
+      return `${Math.round(122 + 133 * warmth)}, ${Math.round(
+        166 + 43 * warmth,
+      )}, ${Math.round(255 - 92 * warmth)}`;
+    };
+    // ponytail: 2D stars are individual draw calls; raise only after profiling.
+    const galaxyStars = Array.from({ length: 1_600 }, (_, index) => {
       const arm = index % 4;
       const radius = 28 + ((Math.sin(index * 91.17) + 1) / 2) * 720;
       const drift = Math.sin(index * 37.91) * 0.48;
       const angle = arm * (Math.PI / 2) + radius * 0.018 + drift;
+      const seed = starSeed(index, 0.37);
       return {
         x: Math.cos(angle) * radius,
         y: Math.sin(index * 143.27) * (8 + radius * 0.07),
         z: Math.sin(angle) * radius,
-        size: index % 29 === 0 ? 2.2 : index % 7 === 0 ? 1.4 : 0.75,
-        tone: index % 13,
+        size: 0.6 + Math.pow(seed, 10) * 3.2,
+        seed,
+        color: starColor(seed),
       };
     });
-    const deepStars = Array.from({ length: 420 }, (_, index) => ({
-      angle: (index * 2.399963) % (Math.PI * 2),
-      phase: (index * 0.618034) % 1,
-      depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
-      speed: 0.72 + ((Math.cos(index * 83.19) + 1) / 2) * 0.64,
-      size: index % 23 === 0 ? 1.8 : index % 7 === 0 ? 1.2 : 0.7,
-      tone: index % 17,
-    }));
+    const deepStars = Array.from({ length: 900 }, (_, index) => {
+      const seed = starSeed(index, 5.19);
+      return {
+        angle: (index * 2.399963) % (Math.PI * 2),
+        phase: (index * 0.618034) % 1,
+        depth: 0.18 + ((Math.sin(index * 57.31) + 1) / 2) * 0.82,
+        speed: 0.72 + ((Math.cos(index * 83.19) + 1) / 2) * 0.64,
+        size: 0.5 + Math.pow(seed, 9) * 2.5,
+        seed,
+        color: starColor(seed),
+      };
+    });
+    const drawStar = (
+      x: number,
+      y: number,
+      size: number,
+      color: string,
+      alpha: number,
+    ) => {
+      context.fillStyle = `rgba(${color}, ${alpha * 0.18})`;
+      context.beginPath();
+      context.arc(x, y, size * 1.65, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = `rgba(${color}, ${alpha})`;
+      context.beginPath();
+      context.arc(x, y, Math.max(0.3, size * 0.42), 0, Math.PI * 2);
+      context.fill();
+    };
     const nebulaClouds = [
       { x: 0.18, y: 0.28, radius: 0.48, color: "42, 112, 132" },
       { x: 0.78, y: 0.32, radius: 0.42, color: "81, 48, 116" },
@@ -468,7 +536,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     const draw = (time: number) => {
       const view = viewRef.current;
       const warp = warpRef.current;
+      const galaxyTransition = galaxyTransitionRef.current;
       const motionReduced = reducedMotionRef.current;
+      const motionScale = motionReduced ? 0.35 : 1;
       const frameDuration =
         previousFrameTime === 0 ? 0 : Math.min(time - previousFrameTime, 32);
       previousFrameTime = time;
@@ -487,9 +557,8 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           progress < 0.5
             ? 8 * Math.pow(progress, 4)
             : 1 - Math.pow(-2 * progress + 2, 4) / 2;
-        warpIntensity = motionReduced
-          ? 0
-          : Math.pow(Math.sin(Math.PI * progress), 0.82);
+        warpIntensity =
+          Math.pow(Math.sin(Math.PI * progress), 0.82) * motionScale;
         view.rotationX = warp.fromX + (warp.toX - warp.fromX) * eased;
         view.rotationY = warp.fromY + (warp.toY - warp.fromY) * eased;
         view.zoom = warp.cruiseZoom - warpIntensity * 260;
@@ -510,16 +579,38 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const ease = motionReduced ? 1 : 0.075;
         view.rotationX += (view.targetX - view.rotationX) * ease;
         view.rotationY += (view.targetY - view.rotationY) * ease;
-        if (!motionReduced && !view.dragging) {
-          view.targetY += 0.0026;
-          const orbitHeight = -0.12 + Math.sin(time * 0.00035) * 0.12;
+        if (!view.dragging) {
+          view.targetY += 0.0026 * motionScale;
+          const orbitHeight =
+            -0.12 + Math.sin(time * 0.00035 * motionScale) * 0.12;
           view.targetX += (orbitHeight - view.targetX) * 0.003;
         }
       }
+
+      if (galaxyTransition.active) {
+        const progress = clamp(
+          (time - galaxyTransition.startedAt) / galaxyTransition.duration,
+          0,
+          1,
+        );
+        warpProgress = progress;
+        warpIntensity =
+          Math.max(
+            warpIntensity,
+            Math.pow(Math.sin(Math.PI * progress), 0.55),
+          ) * motionScale;
+      }
+
+      const starfieldWarp =
+        warpIntensity * (galaxyTransition.active ? 1.8 : 1);
       flightDistance +=
-        frameDuration * (motionReduced ? 0 : 0.00032 + warpIntensity * 0.00085);
+        frameDuration *
+        (0.00032 + starfieldWarp * 0.00135) *
+        motionScale;
       orbitPhase +=
-        frameDuration * (motionReduced ? 0 : 0.00022 + warpIntensity * 0.00018);
+        frameDuration *
+        (0.00022 + warpIntensity * 0.00018) *
+        motionScale;
 
       const focusBlend = warpProgress * warpProgress * (3 - 2 * warpProgress);
       const focusLevel = (id: string) => {
@@ -661,6 +752,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       context.fillStyle = glow;
       context.fillRect(0, 0, width, height);
 
+      context.globalCompositeOperation = "lighter";
       for (const star of deepStars) {
         const progress = (star.phase + flightDistance * star.speed) % 1;
         const distance =
@@ -670,20 +762,28 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         const directionY = Math.sin(angle);
         const x = width / 2 + directionX * distance;
         const y = height / 2 + directionY * distance;
-        const pulse = motionReduced
-          ? 0.28
-          : 0.12 + ((Math.sin(time * 0.001 + star.phase * 30) + 1) / 2) * 0.28;
-        const alpha = pulse * (0.35 + star.depth * 0.45 + progress * 0.35);
-        const trail = (22 + warpIntensity * 130) * star.depth * progress;
-        context.strokeStyle =
-          star.tone === 0
-            ? `rgba(217, 255, 85, ${alpha})`
-            : `rgba(225, 235, 255, ${alpha})`;
-        context.lineWidth = star.size * (0.7 + progress * 0.8);
-        context.beginPath();
-        context.moveTo(x - directionX * trail, y - directionY * trail);
-        context.lineTo(x, y);
-        context.stroke();
+        const twinkle = motionReduced
+          ? 0.7
+          : 0.55 +
+            0.45 *
+              Math.sin(
+                time * (0.0008 + star.seed * 0.002) + star.seed * 31,
+              );
+        const alpha =
+          twinkle * (0.18 + star.seed * 0.36 + progress * 0.18);
+        const starSize = star.size * (0.7 + progress * 0.8);
+        if (starfieldWarp > 0.03) {
+          const trail =
+            (22 + starfieldWarp * 230) * star.depth * progress;
+          context.strokeStyle = `rgba(${star.color}, ${alpha})`;
+          context.lineWidth = starSize;
+          context.beginPath();
+          context.moveTo(x - directionX * trail, y - directionY * trail);
+          context.lineTo(x, y);
+          context.stroke();
+        } else {
+          drawStar(x, y, starSize, star.color, alpha);
+        }
       }
 
       for (const star of galaxyStars) {
@@ -698,34 +798,36 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         ) {
           continue;
         }
-        const alpha = clamp(0.2 + point.scale * 0.34, 0.18, 0.82);
-        context.fillStyle =
-          star.tone === 0
-            ? `rgba(217, 255, 85, ${alpha})`
-            : star.tone < 4
-              ? `rgba(116, 230, 211, ${alpha})`
-              : `rgba(225, 235, 255, ${alpha})`;
-        const starSize = clamp(star.size * point.scale, 0.45, 3.2);
-        if (warpIntensity > 0.03) {
-          const travelDistance = 0.025 + warpIntensity * 0.12;
+        const twinkle = motionReduced
+          ? 0.7
+          : 0.55 +
+            0.45 *
+              Math.sin(
+                time * (0.0008 + star.seed * 0.002) + star.seed * 31,
+              );
+        const alpha =
+          clamp(0.2 + point.scale * 0.34, 0.18, 0.82) * twinkle;
+        const starSize = clamp(star.size * point.scale, 0.45, 4.8);
+        if (starfieldWarp > 0.03) {
+          const travelDistance = 0.025 + starfieldWarp * 0.2;
           context.beginPath();
           context.moveTo(point.x, point.y);
           context.lineTo(
             point.x + (point.x - width / 2) * travelDistance,
             point.y + (point.y - height / 2) * travelDistance,
           );
-          context.strokeStyle =
-            star.tone === 0
-              ? `rgba(217, 255, 85, ${alpha * warpIntensity})`
-              : `rgba(180, 226, 255, ${alpha * warpIntensity})`;
+          context.strokeStyle = `rgba(${star.color}, ${clamp(
+            alpha * starfieldWarp,
+            0,
+            1,
+          )})`;
           context.lineWidth = starSize;
           context.stroke();
         } else {
-          context.beginPath();
-          context.arc(point.x, point.y, starSize, 0, Math.PI * 2);
-          context.fill();
+          drawStar(point.x, point.y, starSize, star.color, alpha);
         }
       }
+      context.globalCompositeOperation = "source-over";
 
       const projected = navigableArticles
         .map((article) => {
@@ -896,6 +998,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           context.lineWidth = 1;
           context.stroke();
         }
+
         if (arrivalPulse > 0.01) {
           context.beginPath();
           context.arc(
@@ -1159,7 +1262,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         });
       }
 
-      if (warpIntensity > 0.02) {
+      if (starfieldWarp > 0.02) {
         const tunnel = context.createRadialGradient(
           width / 2,
           height / 2,
@@ -1168,9 +1271,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           height / 2,
           Math.max(width, height) * 0.72,
         );
-        tunnel.addColorStop(0, `rgba(217, 255, 85, ${warpIntensity * 0.04})`);
+        tunnel.addColorStop(0, `rgba(217, 255, 85, ${starfieldWarp * 0.04})`);
         tunnel.addColorStop(0.5, "rgba(3, 7, 6, 0)");
-        tunnel.addColorStop(1, `rgba(0, 3, 7, ${warpIntensity * 0.42})`);
+        tunnel.addColorStop(
+          1,
+          `rgba(0, 3, 7, ${clamp(starfieldWarp * 0.42, 0, 0.82)})`,
+        );
         context.fillStyle = tunnel;
         context.fillRect(0, 0, width, height);
 
@@ -1181,7 +1287,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           const radius = phase * Math.max(width, height) * 0.58;
           context.beginPath();
           context.arc(0, 0, radius, 0, Math.PI * 2);
-          context.strokeStyle = `rgba(116, 230, 211, ${(1 - phase) * warpIntensity * 0.13})`;
+          context.strokeStyle = `rgba(116, 230, 211, ${(1 - phase) * starfieldWarp * 0.13})`;
           context.lineWidth = 1;
           context.stroke();
         }
@@ -1240,6 +1346,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   };
 
   const openGalaxyGate = () => {
+    if (gateLocked) return;
     setGateAnswer("");
     setGateResult("idle");
     setGateFeedback("");
@@ -1254,9 +1361,29 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     setActiveGalaxyTitle(galaxyTitle);
   };
 
+  const enterUnlockedGalaxy = (galaxyTitle: string) => {
+    gateDialogRef.current?.close();
+    cancelWarp();
+    selectedIdRef.current = "";
+    setSelectedId("");
+    setQuery("");
+    setUnlockedGalaxyTitle(galaxyTitle);
+    setActiveGalaxyTitle(galaxyTitle);
+    galaxyTransitionRef.current = {
+      active: true,
+      startedAt: performance.now(),
+      duration:
+      reducedMotion || reducedMotionRef.current
+        ? REDUCED_GALAXY_WARP_DURATION
+        : GALAXY_WARP_DURATION,
+    };
+    setJourneyPhase("warping");
+    setGalaxyEntryActive(true);
+  };
+
   const submitGalaxyGate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!activeGate || !nextGalaxy || !gateAnswer) return;
+    if (gateLocked || !activeGate || !nextGalaxy || !gateAnswer) return;
     if (gateAnswer !== activeGate.correctAnswer) {
       setGateResult("failed");
       setGateFeedback("Signal rejected. Recheck the concept and try again.");
@@ -1270,18 +1397,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         new Set([...current.passedGalaxyGates, activeGate.galaxyId]),
       ),
     }));
-    setGateResult("passed");
-    setGateFeedback(`Access granted. ${nextGalaxy.title} is now online.`);
-    setQuery("");
-    warpTo("");
-  };
-
-  const enterUnlockedGalaxy = () => {
-    gateDialogRef.current?.close();
-    if (!unlockedGalaxyTitle) return;
-    setActiveGalaxyTitle(unlockedGalaxyTitle);
-    setJourneyPhase("warping");
-    setGalaxyEntryActive(true);
+    enterUnlockedGalaxy(nextGalaxy.title);
   };
 
   return (
@@ -1359,7 +1475,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         <div
           className="galaxy-entry"
           data-active={galaxyEntryActive}
-          data-motion={motionPaused ? "off" : "on"}
+          data-motion={reducedMotion ? "off" : "on"}
           aria-hidden="true"
         >
           <span className="galaxy-entry-rift" />
@@ -1373,26 +1489,38 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           className="galaxy-gate"
           type="button"
           data-complete={!activeGate}
+          data-locked={gateLocked}
           hidden={
             Boolean(selectedId) ||
             journeyPhase === "warping" ||
             Boolean(activeGate && activeGalaxy.id !== activeGate.galaxyId)
           }
-          disabled={!ready}
+          disabled={!ready || gateLocked}
           onClick={openGalaxyGate}
           aria-label={
             activeGate && nextGalaxy
-              ? `Open black hole test to unlock ${nextGalaxy.title}`
+              ? gateLocked
+                ? `Black hole locked: ${completedGateMissions} of ${gateMissions.length} missions complete`
+                : `Open black hole test to unlock ${nextGalaxy.title}`
               : "All galaxy gates cleared"
           }
         >
+          <BlackHoleGate view={viewRef} />
           <span className="galaxy-gate-singularity" aria-hidden="true" />
           <span className="galaxy-gate-ring" aria-hidden="true" />
           <span className="galaxy-gate-label">
-            <strong>{activeGate ? "Black hole test" : "Gates cleared"}</strong>
+            <strong>
+              {activeGate
+                ? gateLocked
+                  ? "Black hole locked"
+                  : "Black hole test"
+                : "Gates cleared"}
+            </strong>
             <small>
               {activeGate && nextGalaxy
-                ? `${galaxies[gateIndex].callSign} → ${nextGalaxy.callSign}`
+                ? gateLocked
+                  ? `${completedGateMissions}/${gateMissions.length} missions complete`
+                  : `${galaxies[gateIndex].callSign} → ${nextGalaxy.callSign}`
                 : "All galaxies online"}
             </small>
           </span>
@@ -1419,26 +1547,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           <header>
             <span>Event horizon checkpoint</span>
             <h2 id="galaxy-gate-title">
-              {gateResult === "passed"
-                ? "Galaxy access granted"
-                : activeGate && nextGalaxy
+              {activeGate && nextGalaxy
                 ? `Unlock ${nextGalaxy.title}`
                 : "All galaxies unlocked"}
             </h2>
           </header>
 
-          {gateResult === "passed" ? (
-            <div className="galaxy-gate-feedback" data-result="passed">
-              <strong>Pass confirmed</strong>
-              <p role="status">{gateFeedback}</p>
-              <button
-                type="button"
-                onClick={enterUnlockedGalaxy}
-              >
-                Enter next galaxy
-              </button>
-            </div>
-          ) : !activeGate ? (
+          {!activeGate ? (
             <div className="galaxy-gate-complete">
               <strong>Deep-space access confirmed.</strong>
               <p>Every knowledge galaxy is online.</p>
@@ -1484,7 +1599,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           <span className="telemetry-signal" aria-hidden="true" />
           <span>
             {journeyPhase === "warping"
-              ? "Travelling through knowledge space"
+              ? galaxyEntryActive && unlockedGalaxyTitle
+                ? `Warping to ${unlockedGalaxyTitle}`
+                : "Travelling through knowledge space"
               : journeyPhase === "arrived"
                 ? "Coordinate locked"
                 : `Orbiting ${activeGalaxy.title}`}
@@ -1581,12 +1698,6 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => rotateView(-0.35)}>
-            Rotate left
-          </button>
-          <button type="button" onClick={() => rotateView(0.35)}>
-            Rotate right
-          </button>
           <button
             type="button"
             onClick={() => {
@@ -1600,23 +1711,19 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           </button>
           <button
             type="button"
-            aria-pressed={!motionPaused}
-            onClick={() => {
-              reducedMotionRef.current = !motionPaused;
-              setMotionPaused(!motionPaused);
-            }}
-          >
-            Flight {motionPaused ? "off" : "on"}
-          </button>
-          <button
-            type="button"
             disabled={!selectedId && journeyPhase !== "warping"}
             onClick={() => warpTo("")}
             aria-label="Unselect focused sun and return to galaxy overview"
           >
             Unselect sun
           </button>
-          <Link href="/mission-control">Mission ctrl</Link>
+          <ViewNavigation
+            className="galaxy-view-navigation"
+            current="galaxy"
+            readHref={`/articles/${
+              selectedArticle?.id ?? navigableArticles[0]?.id ?? articles[0].id
+            }`}
+          />
         </div>
 
         {selectedArticle ? (

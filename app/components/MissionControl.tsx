@@ -7,9 +7,11 @@ import {
   flightPlans,
   galaxies,
   galaxyForOrder,
+  nextArticleIdForPlan,
   type GalaxyId,
 } from "@/lib/voyage";
 import { useVoyageProgress } from "./useVoyageProgress";
+import ViewNavigation from "./ViewNavigation";
 
 interface MissionArticle {
   id: string;
@@ -62,6 +64,13 @@ export default function MissionControl({
   const planMastered = activePlan.articleIds.filter((id) =>
     masteredIds.has(id),
   ).length;
+  const nextPlanArticleId = nextArticleIdForPlan(
+    activePlan.id,
+    progress.masteredArticleIds,
+  );
+  const nextPlanArticle = nextPlanArticleId
+    ? articleById.get(nextPlanArticleId)
+    : undefined;
   const completedExpeditionSteps = useMemo(
     () =>
       Object.values(progress.completedExpeditionSteps).reduce(
@@ -89,7 +98,7 @@ export default function MissionControl({
   return (
     <main className="mission-control-page" id="main-content">
       <header className="mission-control-header">
-        <nav aria-label="Primary navigation">
+        <div className="mission-topbar">
           <Link className="brand" href="/">
             <span className="brand-mark" aria-hidden="true">
               SV
@@ -99,8 +108,15 @@ export default function MissionControl({
               <small>Return to knowledge galaxy</small>
             </span>
           </Link>
-          <Link href="/lab">Simulation deck</Link>
-        </nav>
+          <ViewNavigation
+            current="mission"
+            readHref={
+              nextPlanArticle
+                ? `/articles/${nextPlanArticle.id}`
+                : `/articles/${activePlan.articleIds[0]}`
+            }
+          />
+        </div>
         <div className="mission-control-intro">
           <p className="eyebrow">[ EDU-SYS / MISSION CONTROL ]</p>
           <h1>Your route through knowledge space.</h1>
@@ -109,6 +125,37 @@ export default function MissionControl({
             into expeditions. The flight log stays on this device.
           </p>
         </div>
+        <section className="mission-next-step" aria-labelledby="next-step-title">
+          <div>
+            <span>{activePlan.callSign} / ACTIVE ROUTE</span>
+            <strong>{activePlan.title}</strong>
+            <small>
+              {planMastered}/{activePlan.articleIds.length} mastered
+            </small>
+          </div>
+          <div>
+            <span>Next learning step</span>
+            <h2 id="next-step-title">
+              {nextPlanArticle?.title ?? "Route complete"}
+            </h2>
+            <p>
+              {nextPlanArticle?.summary ??
+                "Every coordinate in this route has a mastery signal."}
+            </p>
+          </div>
+          <div>
+            {nextPlanArticle ? (
+              <Link href={`/articles/${nextPlanArticle.id}`}>
+                Continue route <span aria-hidden="true">→</span>
+              </Link>
+            ) : (
+              <Link href="/lab">
+                Open simulator <span aria-hidden="true">→</span>
+              </Link>
+            )}
+            <a href="#flight-plans">Change flight plan</a>
+          </div>
+        </section>
         <dl className="mission-telemetry" aria-label="Voyage progress">
           <div>
             <dt>Coordinates visited</dt>
@@ -220,7 +267,11 @@ export default function MissionControl({
         </div>
       </section>
 
-      <section className="control-section flight-plans" aria-labelledby="plans-title">
+      <section
+        className="control-section flight-plans"
+        id="flight-plans"
+        aria-labelledby="plans-title"
+      >
         <div className="section-heading">
           <div>
             <p className="eyebrow">Autopilot routes</p>

@@ -41,12 +41,13 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
     /Node profile<\/span><strong>01<!-- --> \/<!-- --> <!-- -->50<\/strong>/,
   );
   assert.match(html, /Connected coordinates/);
-  assert.match(html, /Mission ctrl/);
+  assert.match(html, /aria-label="View navigation"/);
   assert.match(html, /Interactive 3D map of connected software knowledge/);
   assert.match(
     html,
     /<button(?=[^>]*class="galaxy-gate")(?=[^>]*hidden)[^>]*>/,
   );
+  assert.match(html, /class="galaxy-gate-render"/);
   assert.match(html, /class="galaxy-entry"/);
   assert.match(html, /Event horizon crossed/);
   assert.match(html, /Algorithms (?:and|&amp;|&) Pseudocode/);
@@ -79,6 +80,10 @@ test("server-renders a static article coordinate", async () => {
   assert.match(html, /Translation matrix/);
   assert.match(html, /Show TypeScript/);
   assert.match(html, /Confirm mastery/);
+  assert.match(
+    html,
+    /aria-current="page"><span aria-hidden="true">0<!-- -->2<\/span>Read/,
+  );
   assert.doesNotMatch(html, /Coordinate not found/);
 });
 
@@ -102,6 +107,9 @@ test("server-renders mission control with galaxies, routes, and expeditions", as
   assert.match(html, /Your route through knowledge space/);
   assert.match(html, /Five knowledge galaxies/);
   assert.match(html, /Personal flight plans/);
+  assert.match(html, /Next learning step/);
+  assert.match(html, /Continue route/);
+  assert.match(html, /starmap-underlay/);
   assert.match(html, /Expedition campaigns/);
   assert.match(html, /Origin sector/);
   assert.match(html, /Reliability commander/);
@@ -119,6 +127,7 @@ test("server-renders the interactive pseudocode simulation deck", async () => {
 
   const html = await response.text();
   assert.match(html, /Flight simulator/);
+  assert.match(html, /starmap-underlay/);
   assert.match(html, /Cargo function/);
   assert.match(html, /Step instruction/);
   assert.match(html, /Run simulation/);

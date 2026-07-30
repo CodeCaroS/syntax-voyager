@@ -15,6 +15,7 @@ import {
   galaxies,
   galaxyGates,
   labChallenges,
+  nextArticleIdForPlan,
 } from "../lib/voyage.ts";
 
 const articles = JSON.parse(
@@ -58,6 +59,30 @@ test("flight plans and expedition article checkpoints use real coordinates", () 
       );
     }
   }
+});
+
+test("flight plans resolve one clear next learning coordinate", () => {
+  assert.equal(
+    nextArticleIdForPlan("cadet-launch", []),
+    "algorithms-and-pseudocode",
+  );
+  assert.equal(
+    nextArticleIdForPlan(
+      "cadet-launch",
+      ["algorithms-and-pseudocode"],
+      "algorithms-and-pseudocode",
+    ),
+    "values-and-variables",
+  );
+  assert.equal(
+    nextArticleIdForPlan(
+      "cadet-launch",
+      ["values-and-variables"],
+      "values-and-variables",
+    ),
+    "algorithms-and-pseudocode",
+  );
+  assert.equal(nextArticleIdForPlan("unknown-plan", []), null);
 });
 
 test("all bundled pseudocode simulations execute and pass", () => {

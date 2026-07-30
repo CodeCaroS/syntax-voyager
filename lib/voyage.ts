@@ -203,6 +203,33 @@ export const flightPlans: FlightPlan[] = [
   },
 ];
 
+export function nextArticleIdForPlan(
+  planId: string,
+  masteredArticleIds: string[],
+  currentArticleId?: string,
+) {
+  const plan = flightPlans.find((candidate) => candidate.id === planId);
+  if (!plan) return null;
+
+  const mastered = new Set(masteredArticleIds);
+  const currentIndex = currentArticleId
+    ? plan.articleIds.indexOf(currentArticleId)
+    : -1;
+  if (currentIndex < 0) {
+    return plan.articleIds.find((articleId) => !mastered.has(articleId)) ?? null;
+  }
+
+  return (
+    plan.articleIds
+      .slice(0, currentIndex)
+      .find((articleId) => !mastered.has(articleId)) ??
+    plan.articleIds
+      .slice(currentIndex + 1)
+      .find((articleId) => !mastered.has(articleId)) ??
+    null
+  );
+}
+
 export interface ExpeditionStep {
   id: string;
   title: string;

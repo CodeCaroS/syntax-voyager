@@ -10,6 +10,7 @@ import {
 } from "@/lib/pseudocode";
 import { labChallenges } from "@/lib/voyage";
 import { useVoyageProgress } from "./useVoyageProgress";
+import ViewNavigation from "./ViewNavigation";
 
 function unique(values: string[]) {
   return [...new Set(values)];
@@ -97,7 +98,7 @@ export default function PseudocodeLab({
   return (
     <main className="simulation-page" id="main-content">
       <header className="simulation-header">
-        <nav aria-label="Primary navigation">
+        <div className="simulation-topbar">
           <Link className="brand" href="/">
             <span className="brand-mark" aria-hidden="true">
               SV
@@ -107,8 +108,11 @@ export default function PseudocodeLab({
               <small>Knowledge galaxy</small>
             </span>
           </Link>
-          <Link href="/mission-control">Mission control</Link>
-        </nav>
+          <ViewNavigation
+            current="simulation"
+            readHref={`/articles/${challenge.relatedArticleId}`}
+          />
+        </div>
         <div>
           <p className="eyebrow">[ SIM-DECK / PSEUDOCODE RUNTIME ]</p>
           <h1>Flight simulator</h1>
