@@ -81,7 +81,7 @@ staged exceptions. Check the official sources for later changes:
 
 ## Development
 
-Requires Node.js `>=22.13.0`.
+Requires Node.js `24.x`.
 
 ```bash
 npm install

@@ -4,7 +4,7 @@
   "description": "An accessible space-themed programming learning system created with generative AI assistance.",
   "private": true,
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   },
   "scripts": {
     "content:build": "node scripts/generate-content.mjs",
@@ -31,7 +31,7 @@
     "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "4.3.3",
     "@tailwindcss/vite": "4.3.3",
-    "@types/node": "22.19.19",
+    "@types/node": "24.13.3",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/three": "^0.141.0",
