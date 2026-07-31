@@ -1,7 +1,7 @@
 # Syntax Voyager
 
 An accessible space-themed learning system for connected programming and
-software-engineering knowledge, with explicit EU AI Act transparency.
+software-engineering knowledge, created with assistance from generative AI.
 
 ![Syntax Voyager galaxy interface](public/og.png)
 
@@ -35,9 +35,13 @@ database, AI service, or remote code runner.
 - Learning progress is stored only in the current browser's `localStorage`.
 - Core navigation and learning flows are keyboard accessible and support
   reduced-motion preferences.
-- The app does not use AI to interact with learners, generate responses,
-  profile users, or make automated decisions. An in-product EU AI Act notice
-  makes this explicit.
+- Generative AI tools assisted with the development of this project and may
+  have contributed to its code, copy, and educational content.
+- Published lessons and simulations are fixed application content. The running
+  app does not use AI to interact with learners, generate responses, profile
+  users, or make automated decisions.
+- This disclosure is provided for transparency only. It is not legal advice or
+  a certification of compliance with the EU AI Act or any other law.
 
 ## Development
 
@@ -57,7 +61,7 @@ npm test
 npm run test:e2e
 ```
 
-Pull requests run lint, unit/render tests, and the Chromium end-to-end suite in
+Every push runs lint, unit/render tests, and the Chromium end-to-end suite in
 GitHub Actions.
 
 On Windows, if Node reports `EPERM` while resolving the OneDrive root, run the
@@ -84,10 +88,9 @@ The app keeps one source of truth for article content and graph relationships.
 Learning routes and sectors reuse those coordinates instead of introducing a
 second content model.
 
-## Contributing
+## Contributions
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, content rules, and the checks
-expected before a pull request.
+This repository does not accept external contributions or pull requests.
 
 Project background lives in the [project plan](docs/project-plan.md) and the
 [beginner usability study](docs/usability-study.md).
