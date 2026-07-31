@@ -131,24 +131,24 @@ test("EU AI Act transparency signage is available in every view", async ({
     await page.goto(route);
     await expect(
       page.getByRole("complementary", {
-        name: "EU AI Act transparency notice",
+        name: "AI assistance and EU AI Act transparency notice",
       }),
     ).toBeVisible();
   }
 
   await page.goto("/");
   const notice = page.getByRole("complementary", {
-    name: "EU AI Act transparency notice",
+    name: "AI assistance and EU AI Act transparency notice",
   });
   await notice.locator("summary").click();
   await expect(
     notice.getByText(
-      "Syntax Voyager does not use an AI system to interact with learners, generate responses, profile users, or make automated decisions.",
+      "Generative AI tools assisted with this project's development and may have contributed to its code, copy, and educational content. Human review remains necessary.",
     ),
   ).toBeVisible();
   await expect(
     notice.getByText(
-      "This notice is informational, not a certification of legal compliance or legal advice.",
+      "Voluntary disclosure — not a claim of conformity, certification, legal advice, or final risk classification.",
     ),
   ).toBeVisible();
 
@@ -156,7 +156,7 @@ test("EU AI Act transparency signage is available in every view", async ({
   await page.goto("/");
   const mobileToggle = page
     .getByRole("complementary", {
-      name: "EU AI Act transparency notice",
+      name: "AI assistance and EU AI Act transparency notice",
     })
     .locator("summary");
   const mobileToggleBox = await mobileToggle.boundingBox();

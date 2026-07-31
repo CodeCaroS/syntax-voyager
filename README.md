@@ -40,8 +40,44 @@ database, AI service, or remote code runner.
 - Published lessons and simulations are fixed application content. The running
   app does not use AI to interact with learners, generate responses, profile
   users, or make automated decisions.
-- This disclosure is provided for transparency only. It is not legal advice or
-  a certification of compliance with the EU AI Act or any other law.
+
+### EU AI Act context
+
+**Voluntary transparency disclosure:** This project was created with assistance
+from AI-based development tools. Human review remains necessary, and the
+maintainer remains responsible for the published code, documentation, and
+learning content.
+
+Repository-level controls for future AI-assisted changes are documented in the
+[AI use and human review policy](docs/ai-use-policy.md).
+
+AI assistance during development does not by itself make the resulting software
+an AI system under Regulation (EU) 2024/1689. Based on the project's current
+functionality, the application does not include, invoke, or expose an AI model
+at runtime. Any future integration of AI functionality must be assessed
+separately according to its functionality, intended purpose, provider or
+deployer roles, outputs, and concrete use context.
+
+Article 50 establishes transparency obligations for providers and deployers of
+certain AI systems; it is not a universal compliance badge for repositories
+developed with AI assistance. This notice is a voluntary disclosure, not a
+claim of conformity, certification, legal advice, or final risk classification.
+It does not replace any disclosure, technical marking, or operational obligation
+that may apply to an AI system or its outputs.
+
+Where Article 4 applies, the responsible provider or deployer must, to its best
+extent, take measures to ensure an appropriate level of AI literacy among staff
+and others operating or using AI systems on its behalf. A repository notice
+does not satisfy those operational duties.
+
+Legal context reviewed **31 July 2026**. The European Commission identifies
+**2 August 2026** as the Regulation's general application date, subject to
+staged exceptions. Check the official sources for later changes:
+
+- [Regulation (EU) 2024/1689 — official text on EUR-Lex](https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng)
+- [Article 4 — AI literacy](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-4)
+- [Article 50 — transparency obligations](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50)
+- [European Commission overview and application timeline](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai)
 
 ## Development
 

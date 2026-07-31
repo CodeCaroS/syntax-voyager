@@ -43,9 +43,13 @@ test("server-renders the Syntax Voyager knowledge map", async () => {
   assert.match(html, /Connected coordinates/);
   assert.match(html, /aria-label="View navigation"/);
   assert.match(html, /Interactive 3D map of connected software knowledge/);
-  assert.match(html, /aria-label="EU AI Act transparency notice"/);
-  assert.match(html, /does not use an AI system to interact with learners/);
-  assert.match(html, /not a certification of legal compliance or legal advice/);
+  assert.match(
+    html,
+    /aria-label="AI assistance and EU AI Act transparency notice"/,
+  );
+  assert.match(html, /Generative AI tools assisted with this project/);
+  assert.match(html, /running app does not include or invoke an AI model/);
+  assert.match(html, /not a claim of conformity, certification, legal advice/);
   assert.match(
     html,
     /<button(?=[^>]*class="galaxy-gate")(?=[^>]*hidden)[^>]*>/,

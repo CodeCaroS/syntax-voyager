@@ -35,27 +35,32 @@ export default function VoyageShell({
       )}
       <aside
         className="ai-transparency-notice"
-        aria-label="EU AI Act transparency notice"
+        aria-label="AI assistance and EU AI Act transparency notice"
       >
         <details>
           <summary>
             <span>EU AI ACT</span>
-            <small>Transparency</small>
+            <small>AI-assisted</small>
           </summary>
           <div className="ai-transparency-copy" role="note">
-            <strong>AI transparency notice</strong>
+            <strong>AI-assisted development notice</strong>
             <p>
-              Syntax Voyager does not use an AI system to interact with
-              learners, generate responses, profile users, or make automated
-              decisions.
+              Generative AI tools assisted with this project&apos;s development
+              and may have contributed to its code, copy, and educational
+              content. Human review remains necessary.
             </p>
             <p>
               Lessons and simulations are fixed application content. Learning
               progress stays in this browser.
             </p>
+            <p>
+              The running app does not include or invoke an AI model, interact
+              with learners through AI, profile users, or make automated
+              decisions.
+            </p>
             <small>
-              This notice is informational, not a certification of legal
-              compliance or legal advice.
+              Voluntary disclosure — not a claim of conformity, certification,
+              legal advice, or final risk classification.
             </small>
           </div>
         </details>

@@ -7,7 +7,7 @@ import "./globals.css";
 import "./spacecraft.css";
 
 const description =
-  "Navigate connected programming and software-engineering knowledge through galaxies, flight plans, expeditions, and simulations.";
+  "An accessible space-themed learning system for connected programming knowledge, created with generative AI assistance.";
 
 const searchArticles = articles.map(
   ({

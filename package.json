@@ -1,7 +1,7 @@
 {
   "name": "syntax-voyager",
   "version": "0.1.0",
-  "description": "An accessible space-themed programming learning system with EU AI Act transparency.",
+  "description": "An accessible space-themed programming learning system created with generative AI assistance.",
   "private": true,
   "engines": {
     "node": "22.x"
