@@ -89,6 +89,9 @@ second content model.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, content rules, and the checks
 expected before a pull request.
 
+Project background lives in the [project plan](docs/project-plan.md) and the
+[beginner usability study](docs/usability-study.md).
+
 ## Security
 
 Please follow [SECURITY.md](SECURITY.md) and do not disclose vulnerability

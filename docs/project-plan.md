@@ -1,4 +1,4 @@
-# Syntax Voyager
+# Syntax Voyager project plan
 
 > Navigate connected software knowledge.
 
