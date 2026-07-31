@@ -3125,6 +3125,121 @@ input,
   background: #030706;
 }
 
+.ai-transparency-notice {
+  position: fixed;
+  top: 112px;
+  left: 18px;
+  z-index: 50;
+  font-family: var(--font-mono);
+}
+
+.ai-transparency-notice details {
+  position: relative;
+}
+
+.ai-transparency-notice summary {
+  display: inline-flex;
+  min-width: 148px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(99, 230, 209, 0.48);
+  background: rgba(3, 10, 9, 0.9);
+  color: var(--signal);
+  box-shadow: inset 3px 0 0 rgba(217, 255, 85, 0.7);
+  cursor: pointer;
+  list-style: none;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+}
+
+.ai-transparency-notice summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-transparency-notice summary span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.ai-transparency-notice summary small {
+  color: #9fb3af;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.ai-transparency-notice summary:hover,
+.ai-transparency-notice summary:focus-visible,
+.ai-transparency-notice details[open] summary {
+  border-color: var(--signal);
+  background: rgba(11, 31, 27, 0.96);
+}
+
+.ai-transparency-notice summary:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.ai-transparency-copy {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(360px, calc(100vw - 36px));
+  max-height: calc(100dvh - 80px);
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid rgba(99, 230, 209, 0.58);
+  background: rgba(3, 10, 9, 0.98);
+  color: #c7d7d3;
+  box-shadow:
+    inset 3px 0 0 var(--signal),
+    0 18px 60px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.ai-transparency-copy strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--signal);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-transparency-copy p,
+.ai-transparency-copy small {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.ai-transparency-copy p + p,
+.ai-transparency-copy p + small {
+  margin-top: 10px;
+}
+
+.ai-transparency-copy small {
+  color: #718985;
+}
+
+.voyage-shell[data-view="panel"] .ai-transparency-notice {
+  top: auto;
+  right: 18px;
+  bottom: 18px;
+  left: auto;
+}
+
+.voyage-shell[data-view="panel"] .ai-transparency-copy {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 8px);
+  left: auto;
+}
+
 .starmap-underlay {
   position: fixed;
   inset: 0;
@@ -3237,6 +3352,22 @@ input,
 }
 
 @media (max-width: 680px) {
+  .voyage-shell[data-view="galaxy"] .ai-transparency-notice {
+    top: 194px;
+    right: 18px;
+    left: auto;
+  }
+
+  .voyage-shell[data-view="galaxy"] .ai-transparency-copy {
+    right: 0;
+    left: auto;
+  }
+
+  .voyage-shell[data-view="panel"] .ai-transparency-notice {
+    right: 10px;
+    bottom: 10px;
+  }
+
   .starmap-underlay .universe-canvas {
     filter: brightness(0.5) saturate(0.72);
     transform: translateX(42%) scale(1.08);

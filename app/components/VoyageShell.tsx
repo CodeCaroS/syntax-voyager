@@ -33,6 +33,33 @@ export default function VoyageShell({
       {galaxyView ? children : (
         <div className="starmap-view-layer">{children}</div>
       )}
+      <aside
+        className="ai-transparency-notice"
+        aria-label="EU AI Act transparency notice"
+      >
+        <details>
+          <summary>
+            <span>EU AI ACT</span>
+            <small>Transparency</small>
+          </summary>
+          <div className="ai-transparency-copy" role="note">
+            <strong>AI transparency notice</strong>
+            <p>
+              Syntax Voyager does not use an AI system to interact with
+              learners, generate responses, profile users, or make automated
+              decisions.
+            </p>
+            <p>
+              Lessons and simulations are fixed application content. Learning
+              progress stays in this browser.
+            </p>
+            <small>
+              This notice is informational, not a certification of legal
+              compliance or legal advice.
+            </small>
+          </div>
+        </details>
+      </aside>
     </div>
   );
 }

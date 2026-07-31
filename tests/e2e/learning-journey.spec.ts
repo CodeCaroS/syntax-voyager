@@ -119,6 +119,52 @@ test("the four views share one navigation and preserve the learning context", as
   ).toHaveAttribute("aria-current", "page");
 });
 
+test("EU AI Act transparency signage is available in every view", async ({
+  page,
+}) => {
+  for (const route of [
+    "/",
+    "/articles/values-and-variables",
+    "/mission-control",
+    "/lab",
+  ]) {
+    await page.goto(route);
+    await expect(
+      page.getByRole("complementary", {
+        name: "EU AI Act transparency notice",
+      }),
+    ).toBeVisible();
+  }
+
+  await page.goto("/");
+  const notice = page.getByRole("complementary", {
+    name: "EU AI Act transparency notice",
+  });
+  await notice.locator("summary").click();
+  await expect(
+    notice.getByText(
+      "Syntax Voyager does not use an AI system to interact with learners, generate responses, profile users, or make automated decisions.",
+    ),
+  ).toBeVisible();
+  await expect(
+    notice.getByText(
+      "This notice is informational, not a certification of legal compliance or legal advice.",
+    ),
+  ).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const mobileToggle = page
+    .getByRole("complementary", {
+      name: "EU AI Act transparency notice",
+    })
+    .locator("summary");
+  const mobileToggleBox = await mobileToggle.boundingBox();
+  expect(mobileToggleBox).not.toBeNull();
+  expect(mobileToggleBox!.width).toBeGreaterThanOrEqual(44);
+  expect(mobileToggleBox!.height).toBeGreaterThanOrEqual(44);
+});
+
 test("passing a black hole test warps directly to the next galaxy", async ({
   page,
 }) => {
