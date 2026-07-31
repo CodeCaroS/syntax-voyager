@@ -1,7 +1,9 @@
 # Syntax Voyager
 
-Syntax Voyager is a space-journey learning system for connected programming
-and software-engineering knowledge.
+An accessible space-themed learning system for connected programming and
+software-engineering knowledge, with explicit EU AI Act transparency.
+
+![Syntax Voyager galaxy interface](public/og.png)
 
 ## What is implemented
 
@@ -20,6 +22,23 @@ and software-engineering knowledge.
 Progress stays in the current browser. The app does not require an account,
 database, AI service, or remote code runner.
 
+## Technology
+
+- React 19 and Vinext on Vite;
+- TypeScript and Markdown content;
+- Three.js for the knowledge galaxy;
+- Cloudflare Workers for deployment;
+- Node's test runner and Playwright for verification.
+
+## Privacy, accessibility, and AI transparency
+
+- Learning progress is stored only in the current browser's `localStorage`.
+- Core navigation and learning flows are keyboard accessible and support
+  reduced-motion preferences.
+- The app does not use AI to interact with learners, generate responses,
+  profile users, or make automated decisions. An in-product EU AI Act notice
+  makes this explicit.
+
 ## Development
 
 Requires Node.js `>=22.13.0`.
@@ -37,6 +56,9 @@ npm run lint
 npm test
 npm run test:e2e
 ```
+
+Pull requests run lint, unit/render tests, and the Chromium end-to-end suite in
+GitHub Actions.
 
 On Windows, if Node reports `EPERM` while resolving the OneDrive root, run the
 same check through the included mapped-drive helper:
@@ -61,3 +83,18 @@ application content bundle.
 The app keeps one source of truth for article content and graph relationships.
 Learning routes and sectors reuse those coordinates instead of introducing a
 second content model.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, content rules, and the checks
+expected before a pull request.
+
+## Security
+
+Please follow [SECURITY.md](SECURITY.md) and do not disclose vulnerability
+details in a public issue.
+
+## License
+
+No open-source license has been selected yet. Until a `LICENSE` file is added,
+all rights are reserved by the copyright holder.

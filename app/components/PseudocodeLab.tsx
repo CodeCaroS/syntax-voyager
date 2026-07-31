@@ -48,7 +48,7 @@ export default function PseudocodeLab({
   const [status, setStatus] = useState<
     "idle" | "running" | "passed" | "failed"
   >("idle");
-  const { progress, updateProgress } = useVoyageProgress();
+  const { progress, ready, updateProgress } = useVoyageProgress();
   const challenge =
     labChallenges.find((candidate) => candidate.id === challengeId) ??
     labChallenges[0];
@@ -126,7 +126,11 @@ export default function PseudocodeLab({
   };
 
   return (
-    <main className="simulation-page" id="main-content">
+    <main
+      className="simulation-page"
+      id="main-content"
+      aria-busy={!ready}
+    >
       <header className="simulation-header">
         <div className="simulation-topbar">
           <Link className="brand" href="/">

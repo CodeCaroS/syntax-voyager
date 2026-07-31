@@ -170,6 +170,10 @@ test("passing a black hole test warps directly to the next galaxy", async ({
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
+  await expect(page.locator(".explorer")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
   const galaxyGate = page.locator(".galaxy-gate");
   await page
     .getByRole("button", {
@@ -239,6 +243,10 @@ test("galaxy selection completes when animation frames stall", async ({
     window.cancelAnimationFrame = () => undefined;
   });
   await page.goto("/");
+  await expect(page.locator(".explorer")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
 
   await page
     .getByRole("button", {
@@ -463,6 +471,10 @@ test("every simulator starter passes in the browser without duplicate records", 
           exact: true,
         }),
       ).toBeVisible();
+      await expect(page.locator(".simulation-page")).toHaveAttribute(
+        "aria-busy",
+        "false",
+      );
       await expect(page.getByLabel("Pseudocode program")).toHaveValue(
         challenge.starter,
       );

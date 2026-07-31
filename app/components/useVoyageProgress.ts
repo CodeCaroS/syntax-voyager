@@ -70,11 +70,10 @@ export function useVoyageProgress() {
       setProgressState(readProgress());
       setReady(true);
     };
-    const animationFrame = window.requestAnimationFrame(sync);
+    sync();
     window.addEventListener("storage", sync);
     window.addEventListener(PROGRESS_EVENT, sync);
     return () => {
-      window.cancelAnimationFrame(animationFrame);
       window.removeEventListener("storage", sync);
       window.removeEventListener(PROGRESS_EVENT, sync);
     };

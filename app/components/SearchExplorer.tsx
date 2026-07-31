@@ -1461,6 +1461,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       className="explorer"
       id="explore"
       aria-label="Interactive knowledge galaxy"
+      aria-busy={!ready}
     >
       <div className="universe-shell" data-journey={journeyPhase}>
         <canvas
