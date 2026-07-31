@@ -11,7 +11,7 @@
     "dev": "npm run content:build && vinext dev",
     "build": "npm run content:build && vinext build",
     "start": "vinext start",
-    "test": "npm run build && node --experimental-strip-types --test tests/rendered-html.test.mjs tests/learning-engine.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/rendered-html.test.mjs tests/learning-engine.test.mjs tests/playwright-config.test.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
