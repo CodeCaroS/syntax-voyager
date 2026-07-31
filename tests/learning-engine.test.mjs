@@ -15,12 +15,16 @@ import {
   galaxies,
   galaxyGates,
   getMissionStepContext,
+  isGalaxyUnlocked,
   labChallenges,
   missionStepCompleted,
   missionStepHref,
   missionStepTargetId,
   missionStepType,
   nextArticleIdForPlan,
+  nextNodeTask,
+  nodeTaskProgress,
+  nodeTasksForArticle,
 } from "../lib/voyage.ts";
 
 const articles = JSON.parse(
@@ -48,6 +52,10 @@ test("each galaxy transition has a valid black hole gate", () => {
     assert.equal(gate.galaxyId, galaxies[index].id);
     assert.ok(gate.answers.includes(gate.correctAnswer));
   });
+  assert.equal(isGalaxyUnlocked("origin-sector", []), true);
+  assert.equal(isGalaxyUnlocked("systems-frontier", []), false);
+  assert.equal(isGalaxyUnlocked("systems-frontier", ["origin-sector"]), true);
+  assert.equal(isGalaxyUnlocked("algorithm-belt", ["systems-frontier"]), false);
 });
 
 test("flight plans and mission stages use real lessons or simulations", () => {
@@ -128,6 +136,38 @@ test("missions keep one ordered thread across lessons and simulations", () => {
   );
 });
 
+test("nodes expose their linked mission and simulation progress", () => {
+  const tasks = nodeTasksForArticle("values-and-variables");
+  assert.deepEqual(
+    tasks.map(({ kind }) => kind),
+    ["mission", "simulation"],
+  );
+  assert.match(tasks[0].href, /mission=guessing-signal&step=store-target/);
+  assert.equal(tasks[1].href, "/lab?challenge=fuel-correction");
+  assert.deepEqual(nodeTaskProgress(tasks, [], []), {
+    completed: 0,
+    total: 2,
+  });
+  assert.equal(nextNodeTask(tasks, [], [])?.kind, "mission");
+  assert.equal(
+    nextNodeTask(tasks, ["values-and-variables"], [])?.kind,
+    "simulation",
+  );
+  assert.deepEqual(
+    nodeTaskProgress(tasks, ["values-and-variables"], ["fuel-correction"]),
+    { completed: 2, total: 2 },
+  );
+  assert.equal(
+    nextNodeTask(
+      tasks,
+      ["values-and-variables"],
+      ["fuel-correction"],
+    ),
+    null,
+  );
+  assert.deepEqual(nodeTasksForArticle("algorithms-and-pseudocode"), []);
+});
+
 test("flight plans resolve one clear next learning coordinate", () => {
   assert.equal(
     nextArticleIdForPlan("cadet-launch", []),
@@ -150,6 +190,15 @@ test("flight plans resolve one clear next learning coordinate", () => {
     "algorithms-and-pseudocode",
   );
   assert.equal(nextArticleIdForPlan("unknown-plan", []), null);
+  assert.equal(
+    nextArticleIdForPlan(
+      "backend-pilot",
+      ["functions", "errors-and-input-validation"],
+      undefined,
+      new Set(["functions", "errors-and-input-validation"]),
+    ),
+    null,
+  );
 });
 
 test("all bundled pseudocode simulations execute and pass", () => {

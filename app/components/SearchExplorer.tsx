@@ -1,6 +1,12 @@
 "use client";
 
-import { galaxies, galaxyGates } from "@/lib/voyage";
+import {
+  galaxies,
+  galaxyGates,
+  nextNodeTask,
+  nodeTaskProgress,
+  nodeTasksForArticle,
+} from "@/lib/voyage";
 import Link from "next/link";
 import {
   type FormEvent,
@@ -183,6 +189,24 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       ),
     [activeGalaxy.title, unlockedArticles],
   );
+  const nodeTaskProgressById = useMemo(
+    () =>
+      new Map(
+        articles.map((article) => [
+          article.id,
+          nodeTaskProgress(
+            nodeTasksForArticle(article.id),
+            progress.masteredArticleIds,
+            progress.passedLabChallenges,
+          ),
+        ]),
+      ),
+    [
+      articles,
+      progress.masteredArticleIds,
+      progress.passedLabChallenges,
+    ],
+  );
 
   const positions = useMemo(
     () =>
@@ -243,6 +267,17 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
 
   const selectedArticle = navigableArticles.find(
     (article) => article.id === selectedId,
+  );
+  const selectedTaskProgress = selectedArticle
+    ? nodeTaskProgressById.get(selectedArticle.id)
+    : null;
+  const selectedNodeTasks = selectedArticle
+    ? nodeTasksForArticle(selectedArticle.id)
+    : [];
+  const selectedNextTask = nextNodeTask(
+    selectedNodeTasks,
+    progress.masteredArticleIds,
+    progress.passedLabChallenges,
   );
   const selectedConnections = useMemo(() => {
     if (!selectedArticle) return [];
@@ -925,6 +960,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       hitAreasRef.current = [];
       for (const node of projected) {
         const focus = focusLevel(node.article.id);
+        const taskProgress = nodeTaskProgressById.get(node.article.id);
         const arrivalAge =
           arrivalRef.current.id === node.article.id
             ? time - arrivalRef.current.startedAt
@@ -1084,6 +1120,28 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         context.beginPath();
         context.arc(node.x, node.y, radius, 0, Math.PI * 2);
         context.fill();
+
+        if (taskProgress?.total) {
+          const taskRingRadius = radius + 5;
+          const taskRatio = taskProgress.completed / taskProgress.total;
+          context.lineWidth = clamp(node.scale * 2.4, 1.5, 3.5);
+          context.beginPath();
+          context.arc(node.x, node.y, taskRingRadius, 0, Math.PI * 2);
+          context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.2)`;
+          context.stroke();
+          if (taskRatio > 0) {
+            context.beginPath();
+            context.arc(
+              node.x,
+              node.y,
+              taskRingRadius,
+              -Math.PI / 2,
+              -Math.PI / 2 + Math.PI * 2 * taskRatio,
+            );
+            context.strokeStyle = `rgba(255, 255, 240, ${0.62 + focus * 0.3})`;
+            context.stroke();
+          }
+        }
 
         context.fillStyle =
           nodeBrightness < 0.5 ? "rgba(242, 239, 229, 0.68)" : "#08100f";
@@ -1337,7 +1395,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       observer.disconnect();
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [completeWarp, navigableArticles, nodeSizeById, positions]);
+  }, [
+    completeWarp,
+    navigableArticles,
+    nodeSizeById,
+    nodeTaskProgressById,
+    positions,
+  ]);
 
   const cancelWarp = () => {
     if (warpCompletionTimerRef.current !== null) {
@@ -1808,7 +1872,24 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
                 <dt>Links</dt>
                 <dd>{selectedConnections.length}</dd>
               </div>
+              {selectedTaskProgress?.total ? (
+                <div>
+                  <dt>Tasks</dt>
+                  <dd>
+                    {selectedTaskProgress.completed}/{selectedTaskProgress.total}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
+            {selectedNextTask ? (
+              <Link className="node-task-cta" href={selectedNextTask.href}>
+                <span>
+                  {selectedNextTask.callSign} / next {selectedNextTask.kind}
+                </span>
+                <strong>{selectedNextTask.title}</strong>
+                <small>Continue task ↗</small>
+              </Link>
+            ) : null}
             <section
               className="node-connections"
               aria-labelledby="node-connections-title"

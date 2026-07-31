@@ -7,6 +7,7 @@ import {
   flightPlans,
   galaxies,
   galaxyForOrder,
+  isGalaxyUnlocked,
   missionStepCompleted,
   missionStepHref,
   missionStepType,
@@ -69,6 +70,20 @@ export default function MissionControl({
     () => new Set(progress.masteredArticleIds),
     [progress.masteredArticleIds],
   );
+  const unlockedArticleIds = useMemo(
+    () =>
+      new Set(
+        articles
+          .filter((article) =>
+            isGalaxyUnlocked(
+              galaxyForOrder(article.order).id,
+              progress.passedGalaxyGates,
+            ),
+          )
+          .map((article) => article.id),
+      ),
+    [articles, progress.passedGalaxyGates],
+  );
   const activePlan =
     flightPlans.find((plan) => plan.id === progress.activePlanId) ??
     flightPlans[0];
@@ -78,10 +93,22 @@ export default function MissionControl({
   const nextPlanArticleId = nextArticleIdForPlan(
     activePlan.id,
     progress.masteredArticleIds,
+    undefined,
+    unlockedArticleIds,
   );
   const nextPlanArticle = nextPlanArticleId
     ? articleById.get(nextPlanArticleId)
     : undefined;
+  const routePaused = activePlan.articleIds.some(
+    (articleId) =>
+      !masteredIds.has(articleId) && !unlockedArticleIds.has(articleId),
+  );
+  const readArticleId =
+    nextPlanArticleId ??
+    activePlan.articleIds.find((articleId) =>
+      unlockedArticleIds.has(articleId),
+    ) ??
+    articles.find((article) => unlockedArticleIds.has(article.id))?.id;
   const completedExpeditionSteps = useMemo(
     () =>
       expeditions
@@ -111,11 +138,7 @@ export default function MissionControl({
           </Link>
           <ViewNavigation
             current="mission"
-            readHref={
-              nextPlanArticle
-                ? `/articles/${nextPlanArticle.id}`
-                : `/articles/${activePlan.articleIds[0]}`
-            }
+            readHref={readArticleId ? `/articles/${readArticleId}` : "/"}
           />
         </div>
         <div className="mission-control-intro">
@@ -137,17 +160,24 @@ export default function MissionControl({
           <div>
             <span>Next learning step</span>
             <h2 id="next-step-title">
-              {nextPlanArticle?.title ?? "Route complete"}
+              {nextPlanArticle?.title ??
+                (routePaused ? "Next galaxy locked" : "Route complete")}
             </h2>
             <p>
               {nextPlanArticle?.summary ??
-                "Every coordinate in this route has a mastery signal."}
+                (routePaused
+                  ? "Pass the current black-hole gate to reveal this route's next coordinates."
+                  : "Every coordinate in this route has a mastery signal.")}
             </p>
           </div>
           <div>
             {nextPlanArticle ? (
               <Link href={`/articles/${nextPlanArticle.id}`}>
                 Continue route <span aria-hidden="true">→</span>
+              </Link>
+            ) : routePaused ? (
+              <Link href="/">
+                Return to galaxy <span aria-hidden="true">&rarr;</span>
               </Link>
             ) : (
               <Link href="/lab">
@@ -316,16 +346,35 @@ export default function MissionControl({
             {activePlan.articleIds.map((articleId, index) => {
               const article = articleById.get(articleId);
               const mastered = masteredIds.has(articleId);
+              const unlocked = unlockedArticleIds.has(articleId);
               return article ? (
-                <li data-complete={mastered} key={articleId}>
+                <li
+                  data-complete={mastered}
+                  data-locked={!unlocked}
+                  key={articleId}
+                >
                   <span>{(index + 1).toString().padStart(2, "0")}</span>
-                  <Link href={`/articles/${article.id}`}>
-                    <strong>{article.title}</strong>
-                    <small>
-                      {mastered ? "Mastery confirmed" : article.summary}
-                    </small>
-                  </Link>
-                  <i aria-hidden="true">{mastered ? "✓" : "→"}</i>
+                  {unlocked ? (
+                    <Link
+                      className="flight-plan-coordinate"
+                      href={`/articles/${article.id}`}
+                    >
+                      <strong>{article.title}</strong>
+                      <small>
+                        {mastered ? "Mastery confirmed" : article.summary}
+                      </small>
+                    </Link>
+                  ) : (
+                    <span className="flight-plan-coordinate">
+                      <strong>{article.title}</strong>
+                      <small>
+                        {galaxyForOrder(article.order).title} locked
+                      </small>
+                    </span>
+                  )}
+                  <i aria-hidden="true">
+                    {mastered ? "✓" : unlocked ? "→" : "—"}
+                  </i>
                 </li>
               ) : null;
             })}

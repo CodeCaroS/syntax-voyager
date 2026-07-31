@@ -96,6 +96,20 @@ export const galaxyGates: GalaxyGate[] = [
   },
 ];
 
+export function isGalaxyUnlocked(
+  galaxyId: GalaxyId,
+  passedGalaxyGates: readonly GalaxyId[],
+) {
+  const galaxyIndex = galaxies.findIndex((galaxy) => galaxy.id === galaxyId);
+  const firstLockedGate = galaxyGates.findIndex(
+    (gate) => !passedGalaxyGates.includes(gate.galaxyId),
+  );
+  return (
+    galaxyIndex >= 0 &&
+    (firstLockedGate < 0 || galaxyIndex <= firstLockedGate)
+  );
+}
+
 export interface FlightPlan {
   id: string;
   callSign: string;
@@ -207,23 +221,27 @@ export function nextArticleIdForPlan(
   planId: string,
   masteredArticleIds: string[],
   currentArticleId?: string,
+  availableArticleIds?: ReadonlySet<string>,
 ) {
   const plan = flightPlans.find((candidate) => candidate.id === planId);
   if (!plan) return null;
 
+  const articleIds = availableArticleIds
+    ? plan.articleIds.filter((articleId) => availableArticleIds.has(articleId))
+    : plan.articleIds;
   const mastered = new Set(masteredArticleIds);
   const currentIndex = currentArticleId
-    ? plan.articleIds.indexOf(currentArticleId)
+    ? articleIds.indexOf(currentArticleId)
     : -1;
   if (currentIndex < 0) {
-    return plan.articleIds.find((articleId) => !mastered.has(articleId)) ?? null;
+    return articleIds.find((articleId) => !mastered.has(articleId)) ?? null;
   }
 
   return (
-    plan.articleIds
+    articleIds
       .slice(0, currentIndex)
       .find((articleId) => !mastered.has(articleId)) ??
-    plan.articleIds
+    articleIds
       .slice(currentIndex + 1)
       .find((articleId) => !mastered.has(articleId)) ??
     null
@@ -739,3 +757,83 @@ DISPLAY request_id + ": " + outcome`,
     relatedArticleId: "logging-and-observability",
   },
 ];
+
+export interface NodeTask {
+  id: string;
+  kind: "mission" | "simulation";
+  callSign: string;
+  title: string;
+  href: string;
+  targetId: string;
+}
+
+export function nodeTasksForArticle(articleId: string): NodeTask[] {
+  const missionTasks = expeditions.flatMap((mission) =>
+    mission.steps.flatMap((step) =>
+      missionStepType(step) === "lesson" &&
+      missionStepTargetId(step) === articleId
+        ? [
+            {
+              id: `mission:${mission.id}:${step.id}`,
+              kind: "mission" as const,
+              callSign: mission.callSign,
+              title: mission.title,
+              href: missionStepHref(mission.id, step),
+              targetId: articleId,
+            },
+          ]
+        : [],
+    ),
+  );
+  const simulationTasks = labChallenges
+    .filter((challenge) => challenge.relatedArticleId === articleId)
+    .map((challenge) => ({
+      id: `simulation:${challenge.id}`,
+      kind: "simulation" as const,
+      callSign: challenge.callSign,
+      title: challenge.title,
+      href: `/lab?challenge=${challenge.id}`,
+      targetId: challenge.id,
+    }));
+  return [...missionTasks, ...simulationTasks];
+}
+
+export function nodeTaskProgress(
+  tasks: readonly NodeTask[],
+  masteredArticleIds: readonly string[],
+  passedLabChallenges: readonly string[],
+) {
+  return {
+    completed: tasks.filter((task) =>
+      nodeTaskCompleted(task, masteredArticleIds, passedLabChallenges),
+    ).length,
+    total: tasks.length,
+  };
+}
+
+export function nodeTaskCompleted(
+  task: NodeTask,
+  masteredArticleIds: readonly string[],
+  passedLabChallenges: readonly string[],
+) {
+  return task.kind === "mission"
+    ? masteredArticleIds.includes(task.targetId)
+    : passedLabChallenges.includes(task.targetId);
+}
+
+export function nextNodeTask(
+  tasks: readonly NodeTask[],
+  masteredArticleIds: readonly string[],
+  passedLabChallenges: readonly string[],
+) {
+  return (
+    tasks.find(
+      (task) =>
+        !nodeTaskCompleted(
+          task,
+          masteredArticleIds,
+          passedLabChallenges,
+        ),
+    ) ?? null
+  );
+}

@@ -129,9 +129,10 @@ export default async function ArticlePage({
               missionId={mission}
               missionStepId={step}
               order={article.order}
-              routeArticles={articles.map(({ id: routeId, title }) => ({
+              routeArticles={articles.map(({ id: routeId, title, order }) => ({
                 id: routeId,
                 title,
+                order,
               }))}
             />
           </header>
