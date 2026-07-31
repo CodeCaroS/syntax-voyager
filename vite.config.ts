@@ -4,6 +4,10 @@ import { sites } from "./build/sites-vite-plugin";
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
+const isVercelBuild =
+  process.env.VERCEL === "1" ||
+  process.env.NITRO_PRESET === "vercel" ||
+  process.env.npm_lifecycle_event === "build:vercel";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
@@ -11,6 +15,14 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async () => {
+  if (isVercelBuild) {
+    process.env.NITRO_PRESET ??= "vercel";
+    const { default: tailwindcss } = await import("@tailwindcss/vite");
+    const { nitro } = await import("nitro/vite");
+
+    return { plugins: [vinext(), tailwindcss(), nitro()] };
+  }
+
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";

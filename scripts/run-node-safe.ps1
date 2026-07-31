@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet("build", "content:build", "dev", "lint", "test", "test:e2e")]
+  [ValidateSet("build", "build:vercel", "content:build", "dev", "lint", "test", "test:e2e")]
   [string]$NpmScript = "test",
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$NpmArguments
