@@ -4,6 +4,7 @@ import { galaxies, galaxyGates } from "@/lib/voyage";
 import Link from "next/link";
 import {
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -118,6 +119,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     fromOrigin: { x: 0, y: 0, z: 0 },
     toOrigin: { x: 0, y: 0, z: 0 },
   });
+  const warpCompletionTimerRef = useRef<number | null>(null);
   const galaxyTransitionRef = useRef<GalaxyTransitionState>({
     active: false,
     startedAt: 0,
@@ -154,6 +156,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const completedGateMissions = gateMissions.filter((article) =>
     progress.masteredArticleIds.includes(article.id),
   ).length;
+  const gateProgressLabel = `${completedGateMissions}/${gateMissions.length} missions complete`;
   const gateLocked = Boolean(
     activeGate &&
       (!gateMissions.length || completedGateMissions < gateMissions.length),
@@ -267,6 +270,36 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     });
   }, [navigableArticles, selectedArticle]);
 
+  const completeWarp = useCallback((completedAt = performance.now()) => {
+    if (warpCompletionTimerRef.current !== null) {
+      window.clearTimeout(warpCompletionTimerRef.current);
+      warpCompletionTimerRef.current = null;
+    }
+    const warp = warpRef.current;
+    if (!warp.active) return;
+
+    const view = viewRef.current;
+    warp.active = false;
+    view.rotationX = warp.toX;
+    view.rotationY = warp.toY;
+    view.zoom = warp.cruiseZoom;
+    selectedIdRef.current = warp.targetId;
+    arrivalRef.current = warp.targetId
+      ? { id: warp.targetId, startedAt: completedAt }
+      : { id: "", startedAt: 0 };
+    setSelectedId(warp.targetId);
+    setJourneyPhase(warp.targetId ? "arrived" : "cruising");
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (warpCompletionTimerRef.current !== null) {
+        window.clearTimeout(warpCompletionTimerRef.current);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (journeyPhase !== "arrived") return;
     const timer = window.setTimeout(() => setJourneyPhase("cruising"), 1400);
@@ -346,6 +379,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       view.targetX = toX;
       view.targetY = toY;
       setJourneyPhase("warping");
+      if (warpCompletionTimerRef.current !== null) {
+        window.clearTimeout(warpCompletionTimerRef.current);
+      }
       warpRef.current = {
         active: true,
         startedAt: now,
@@ -359,8 +395,12 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         fromOrigin,
         toOrigin: position,
       };
+      warpCompletionTimerRef.current = window.setTimeout(
+        completeWarp,
+        warpRef.current.duration + 100,
+      );
     },
-    [positions],
+    [completeWarp, positions],
   );
 
   useEffect(() => {
@@ -565,16 +605,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         view.zoom = warp.cruiseZoom - warpIntensity * 260;
 
         if (progress >= 1) {
-          warp.active = false;
-          view.rotationX = warp.toX;
-          view.rotationY = warp.toY;
-          view.zoom = warp.cruiseZoom;
-          selectedIdRef.current = warp.targetId;
-          arrivalRef.current = warp.targetId
-            ? { id: warp.targetId, startedAt: time }
-            : { id: "", startedAt: 0 };
-          setSelectedId(warp.targetId);
-          setJourneyPhase(warp.targetId ? "arrived" : "cruising");
+          completeWarp(time);
         }
       } else {
         const ease = motionReduced ? 1 : 0.075;
@@ -1306,9 +1337,13 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       observer.disconnect();
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [navigableArticles, nodeSizeById, positions]);
+  }, [completeWarp, navigableArticles, nodeSizeById, positions]);
 
   const cancelWarp = () => {
+    if (warpCompletionTimerRef.current !== null) {
+      window.clearTimeout(warpCompletionTimerRef.current);
+      warpCompletionTimerRef.current = null;
+    }
     warpRef.current.active = false;
     setJourneyPhase("cruising");
   };
@@ -1352,6 +1387,26 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     setGateResult("idle");
     setGateFeedback("");
     if (!gateDialogRef.current?.open) gateDialogRef.current?.showModal();
+  };
+
+  const containGateDialogFocus = (
+    event: ReactKeyboardEvent<HTMLDialogElement>,
+  ) => {
+    if (event.key !== "Tab") return;
+    const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+      "button:not(:disabled), input:not(:disabled)",
+    );
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (!first || !last) return;
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   const visitGalaxy = (galaxyTitle: string) => {
@@ -1501,7 +1556,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           aria-label={
             activeGate && nextGalaxy
               ? gateLocked
-                ? `Black hole locked: ${completedGateMissions} of ${gateMissions.length} missions complete`
+                ? `Black hole locked: ${gateProgressLabel}`
                 : `Open black hole test to unlock ${nextGalaxy.title}`
               : "All galaxy gates cleared"
           }
@@ -1520,7 +1575,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             <small>
               {activeGate && nextGalaxy
                 ? gateLocked
-                  ? `${completedGateMissions}/${gateMissions.length} missions complete`
+                  ? gateProgressLabel
                   : `${galaxies[gateIndex].callSign} → ${nextGalaxy.callSign}`
                 : "All galaxies online"}
             </small>
@@ -1531,6 +1586,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           ref={gateDialogRef}
           className="galaxy-gate-dialog"
           aria-labelledby="galaxy-gate-title"
+          onKeyDown={containGateDialogFocus}
           onClose={() => {
             setGateAnswer("");
             setGateResult("idle");
@@ -1662,7 +1718,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
           {normalizedQuery ? (
             <div className="warp-results" aria-label="Search results">
               {results.length > 0 ? (
-                results.slice(0, 4).map((article) => (
+                results.map((article) => (
                   <button
                     type="button"
                     key={article.id}

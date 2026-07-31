@@ -51,6 +51,13 @@ test("search, keyboard navigation, and reduced motion operate the galaxy", async
   await expect(galaxy).toBeFocused();
 
   await page.getByLabel("Choose a coordinate").fill("variables");
+  const announcedResults = Number.parseInt(
+    (await page.locator(".search-count").textContent()) ?? "0",
+    10,
+  );
+  await expect(page.locator(".warp-results button")).toHaveCount(
+    announcedResults,
+  );
   await page
     .getByRole("button", { name: "02 Values and Variables", exact: true })
     .click();
@@ -127,6 +134,9 @@ test("passing a black hole test warps directly to the next galaxy", async ({
   await expect(galaxyGate).toContainText(
     `0/${firstGalaxyMissionIds.length} missions complete`,
   );
+  await expect(galaxyGate).toHaveAccessibleName(
+    `Black hole locked: 0/${firstGalaxyMissionIds.length} missions complete`,
+  );
 
   await page.evaluate((masteredArticleIds) => {
     window.localStorage.setItem(
@@ -151,6 +161,15 @@ test("passing a black hole test warps directly to the next galaxy", async ({
   await expect(galaxyGate).toBeVisible();
 
   await galaxyGate.click();
+  const gateDialog = page.getByRole("dialog");
+  const closeGate = page.getByRole("button", { name: "Close galaxy test" });
+  await expect(closeGate).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect
+    .poll(() =>
+      gateDialog.evaluate((dialog) => dialog.contains(document.activeElement)),
+    )
+    .toBe(true);
   await page.getByLabel("A loop").check();
   await page.getByRole("button", { name: "Cross event horizon" }).click();
 
@@ -164,6 +183,23 @@ test("passing a black hole test warps directly to the next galaxy", async ({
   await expect(transition).toHaveAttribute("data-active", "false", {
     timeout: 2_000,
   });
+});
+
+test("galaxy selection completes when animation frames stall", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.requestAnimationFrame = () => 1;
+    window.cancelAnimationFrame = () => undefined;
+  });
+  await page.goto("/");
+
+  await page
+    .getByRole("button", {
+      name: "Unselect focused sun and return to galaxy overview",
+    })
+    .click();
+  await expect(page.locator(".galaxy-gate")).toBeVisible({ timeout: 2_000 });
 });
 
 test("one mission thread carries a lesson into its SIM and next lesson", async ({
@@ -231,9 +267,48 @@ test("the simulator exposes pass, failure, stepping, and persisted results", asy
   await page.getByRole("button", { name: "Check mission" }).click();
   await expect(page.getByText("Check failed")).toBeVisible();
 
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Reset code" }).click();
   await page.getByRole("button", { name: "Step instruction" }).click();
   await expect(page.getByText("Trace ready")).toBeVisible();
+});
+
+test("the simulator confirms before replacing edited code", async ({ page }) => {
+  const current = labChallenges.find(
+    (challenge) => challenge.id === "cargo-function",
+  )!;
+  const next = labChallenges.find((challenge) => challenge.id !== current.id)!;
+  const editedSource = "DISPLAY 99";
+  await page.goto(`/lab?challenge=${current.id}`);
+
+  const editor = page.getByLabel("Pseudocode program");
+  await editor.click();
+  await page.keyboard.press("Control+A");
+  await editor.pressSequentially(editedSource);
+  await expect(editor).toHaveValue(editedSource);
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page
+    .getByRole("button", { name: new RegExp(next.title) })
+    .click();
+  await expect(editor).toHaveValue(editedSource);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: new RegExp(next.title) })
+    .click();
+  await expect(editor).toHaveValue(next.starter);
+
+  await editor.click();
+  await page.keyboard.press("Control+A");
+  await editor.pressSequentially(editedSource);
+  await expect(editor).toHaveValue(editedSource);
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("button", { name: "Reset code" }).click();
+  await expect(editor).toHaveValue(editedSource);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Reset code" }).click();
+  await expect(editor).toHaveValue(next.starter);
 });
 
 for (const galaxy of galaxies) {
@@ -404,8 +479,14 @@ test("mission control persists plans, expands manifests, and safely resets stora
     }),
   ).toHaveAttribute("aria-pressed", "true");
 
-  await page.getByRole("button", { name: "Reset flight log" }).click();
-  await page.getByRole("button", { name: "Keep flight log" }).click();
+  const resetFlightLog = page.getByRole("button", {
+    name: "Reset flight log",
+  });
+  await resetFlightLog.click();
+  const keepFlightLog = page.getByRole("button", { name: "Keep flight log" });
+  await expect(keepFlightLog).toBeFocused();
+  await keepFlightLog.click();
+  await expect(resetFlightLog).toBeFocused();
   await expect(
     page.getByRole("button", {
       name: new RegExp(flightPlans.at(-1)!.title),
@@ -488,6 +569,46 @@ test("article controls translate examples, persist mastery, and reject mismatche
   await expect(page.getByLabel("Flight log")).not.toContainText(
     "Restore the docking sequence",
   );
+});
+
+test("article heading rail follows scrolling between observer callbacks", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "IntersectionObserver", {
+      configurable: true,
+      value: class {
+        constructor() {
+          document.documentElement.dataset.scrollSpyReady = "true";
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      },
+    });
+  });
+  await page.goto("/articles/values-and-variables");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-scroll-spy-ready",
+    "true",
+  );
+
+  const headingRail = page.getByRole("navigation", { name: "On this page" });
+  await expect(headingRail.getByRole("link").first()).toHaveAttribute(
+    "aria-current",
+    "location",
+  );
+  const targetHeadingLink = headingRail.getByRole("link", {
+    name: "Common mistakes",
+    exact: true,
+  });
+  await page.evaluate(() =>
+    document.getElementById("common-mistakes")?.scrollIntoView(),
+  );
+  await expect(targetHeadingLink).toHaveAttribute("aria-current", "location");
 });
 
 test("all galaxy gates validate a wrong answer before unlocking the next sector", async ({
@@ -575,6 +696,74 @@ test("primary views remain usable without horizontal overflow on mobile", async 
       await expectNoHorizontalOverflow(page);
     });
   }
+});
+
+test("mobile galaxy keeps search and primary controls reachable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const search = page.locator(".universe-search");
+  const inspector = page.locator(".node-inspector");
+  await expect(search).toBeVisible();
+  await expect(inspector).toBeVisible();
+  const searchBox = await search.boundingBox();
+  const inspectorBox = await inspector.boundingBox();
+  expect(searchBox).not.toBeNull();
+  expect(inspectorBox).not.toBeNull();
+  expect(searchBox!.y + searchBox!.height).toBeLessThanOrEqual(inspectorBox!.y);
+
+  const undersizedTargets = await page
+    .locator(
+      ".view-navigation a, .galaxy-picker select, .universe-controls button",
+    )
+    .evaluateAll((elements) =>
+      elements.flatMap((element) => {
+        const bounds = element.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) return [];
+        return bounds.width < 44 || bounds.height < 44
+          ? [
+              {
+                label:
+                  element.getAttribute("aria-label") ?? element.textContent,
+                width: bounds.width,
+                height: bounds.height,
+              },
+            ]
+          : [];
+      }),
+    );
+  expect(undersizedTargets).toEqual([]);
+
+  await page.evaluate((masteredArticleIds) => {
+    window.localStorage.setItem(
+      "syntax-voyager:flight-log:v1",
+      JSON.stringify({
+        activePlanId: "cadet-launch",
+        visitedArticleIds: masteredArticleIds,
+        masteredArticleIds,
+        completedExpeditionSteps: {},
+        passedLabChallenges: [],
+        passedGalaxyGates: [],
+      }),
+    );
+  }, firstGalaxyMissionIds);
+  await page.reload();
+  await page
+    .getByRole("button", {
+      name: "Unselect focused sun and return to galaxy overview",
+    })
+    .click();
+  const galaxyGate = page.locator(".galaxy-gate");
+  await expect(galaxyGate).toBeVisible();
+  await galaxyGate.click();
+  const closeBox = await page
+    .getByRole("button", { name: "Close galaxy test" })
+    .boundingBox();
+  expect(closeBox).not.toBeNull();
+  expect(closeBox!.width).toBeGreaterThanOrEqual(44);
+  expect(closeBox!.height).toBeGreaterThanOrEqual(44);
 });
 
 test("unknown article routes return a real not-found response", async ({

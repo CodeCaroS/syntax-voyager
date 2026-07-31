@@ -70,14 +70,23 @@ export default function PseudocodeLab({
 
   const sourceLines = useMemo(() => source.split(/\r?\n/), [source]);
 
-  const selectChallenge = (id: string) => {
-    const next = labChallenges.find((candidate) => candidate.id === id);
-    if (!next) return;
+  const loadChallenge = (next: typeof challenge) => {
+    if (
+      source !== challenge.starter &&
+      !window.confirm("Discard your edits and load the selected starter code?")
+    ) {
+      return;
+    }
     setChallengeId(next.id);
     setSource(next.starter);
     setResult(null);
     setFrameIndex(-1);
     setStatus("idle");
+  };
+
+  const selectChallenge = (id: string) => {
+    const next = labChallenges.find((candidate) => candidate.id === id);
+    if (next) loadChallenge(next);
   };
 
   const simulate = () => {
@@ -272,12 +281,7 @@ export default function PseudocodeLab({
             <div className="simulation-controls">
               <button
                 type="button"
-                onClick={() => {
-                  setSource(challenge.starter);
-                  setResult(null);
-                  setFrameIndex(-1);
-                  setStatus("idle");
-                }}
+                onClick={() => loadChallenge(challenge)}
               >
                 Reset code
               </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   expeditions,
   flightPlans,
@@ -38,6 +38,18 @@ export default function MissionControl({
     useVoyageProgress();
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [expandedGalaxyIds, setExpandedGalaxyIds] = useState<GalaxyId[]>([]);
+  const resetTriggerRef = useRef<HTMLButtonElement>(null);
+  const keepFlightLogRef = useRef<HTMLButtonElement>(null);
+  const wasConfirmingResetRef = useRef(false);
+
+  useEffect(() => {
+    if (confirmingReset) {
+      keepFlightLogRef.current?.focus();
+    } else if (wasConfirmingResetRef.current) {
+      resetTriggerRef.current?.focus();
+    }
+    wasConfirmingResetRef.current = confirmingReset;
+  }, [confirmingReset]);
 
   const articleById = useMemo(
     () => new Map(articles.map((article) => [article.id, article])),
@@ -430,12 +442,20 @@ export default function MissionControl({
             >
               Confirm reset
             </button>
-            <button type="button" onClick={() => setConfirmingReset(false)}>
+            <button
+              ref={keepFlightLogRef}
+              type="button"
+              onClick={() => setConfirmingReset(false)}
+            >
               Keep flight log
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => setConfirmingReset(true)}>
+          <button
+            ref={resetTriggerRef}
+            type="button"
+            onClick={() => setConfirmingReset(true)}
+          >
             Reset flight log
           </button>
         )}

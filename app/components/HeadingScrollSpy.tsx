@@ -27,9 +27,13 @@ export default function HeadingScrollSpy({
       rootMargin: "-128px 0px -65% 0px",
     });
     elements.forEach((element) => observer.observe(element));
+    window.addEventListener("scroll", update, { passive: true });
     update();
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", update);
+    };
   }, [headings]);
 
   if (headings.length === 0) return null;

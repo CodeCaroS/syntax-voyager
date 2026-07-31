@@ -54,14 +54,14 @@ input,
   border: 1px solid var(--line);
   background: #050b0b;
   color: #9fb3af;
-  font: 8px/1 var(--font-mono);
+  font: 10px/1 var(--font-mono);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .view-navigation a {
   display: inline-flex;
-  min-height: 38px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -79,7 +79,7 @@ input,
 
 .view-navigation a > span {
   color: #5f7772;
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .view-navigation a:hover,
@@ -546,8 +546,8 @@ input,
   top: 16px;
   right: 16px;
   z-index: 1;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--paper);
@@ -726,20 +726,20 @@ input,
 
 .galaxy-picker span {
   color: var(--signal);
-  font: 700 7px/1 var(--font-mono);
+  font: 700 9px/1 var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .galaxy-picker select {
   min-width: 0;
-  min-height: 26px;
+  min-height: 44px;
   padding: 0 6px;
   border: 1px solid var(--line);
   background: #050b0b;
   color: var(--paper);
   cursor: pointer;
-  font: 8px/1 var(--font-mono);
+  font: 10px/1 var(--font-mono);
 }
 
 .galaxy-picker select:focus-visible {
@@ -753,12 +753,12 @@ input,
 .navigator-steps button {
   display: grid;
   place-items: center;
-  min-height: 34px;
+  min-height: 44px;
   padding: 8px 12px;
   border-color: var(--line);
   background: transparent;
   color: #9fb3af;
-  font: 9px/1 var(--font-mono);
+  font: 10px/1 var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   transition:
@@ -2800,7 +2800,7 @@ input,
   .galaxy-page .universe-controls a {
     min-width: 0;
     padding: 9px 4px;
-    font-size: 7px;
+    font-size: 10px;
     line-height: 1.25;
   }
 
@@ -2844,8 +2844,11 @@ input,
     border-top-width: 2px;
   }
 
+  .universe-shell:has(.node-inspector) .universe-search {
+    bottom: calc(42dvh + 28px);
+  }
+
   .universe-shell:has(.node-inspector) .navigator-steps,
-  .universe-shell:has(.node-inspector) .universe-search,
   .universe-shell:has(.node-inspector) .flight-telemetry {
     display: none;
   }
