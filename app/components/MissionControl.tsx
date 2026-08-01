@@ -211,87 +211,101 @@ export default function MissionControl({
         </dl>
       </header>
 
-      <section className="control-section" aria-labelledby="galaxies-title">
+      <section
+        className="control-section"
+        id="missions"
+        aria-labelledby="expeditions-title"
+      >
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Navigation array</p>
-            <h2 id="galaxies-title">Five knowledge galaxies</h2>
+            <p className="eyebrow">Guided routes</p>
+            <h2 id="expeditions-title">Guided missions</h2>
           </div>
           <p>
-            The original 50 coordinates are now grouped by the kind of
-            engineering judgment they develop.
+            Follow one mission step by step: open the lesson, confirm mastery,
+            pass the matching SIM, then continue.
           </p>
         </div>
-        <div className="galaxy-manifest">
-          {galaxyNodes.map(({ galaxy, nodes }) => {
-            const mastered = nodes.filter((article) =>
-              masteredIds.has(article.id),
-            ).length;
-            const nextNode =
-              nodes.find((article) => !masteredIds.has(article.id)) ?? nodes[0];
-            const expanded = expandedGalaxyIds.includes(galaxy.id);
-
+        <div className="expedition-board">
+          {expeditions.map((expedition) => {
+            const completed = expedition.steps.filter((step) =>
+              missionStepCompleted(
+                step,
+                progress.masteredArticleIds,
+                progress.passedLabChallenges,
+              ),
+            );
             return (
-              <article key={galaxy.id}>
+              <article
+                id={`mission-${expedition.id}`}
+                key={expedition.id}
+              >
                 <header>
-                  <span>{galaxy.callSign}</span>
-                  <small>
-                    {mastered.toString().padStart(2, "0")} /{" "}
-                    {nodes.length.toString().padStart(2, "0")}
-                  </small>
+                  <span>{expedition.callSign}</span>
+                  <small>{expedition.difficulty}</small>
                 </header>
-                <h3>{galaxy.title}</h3>
-                <p>{galaxy.summary}</p>
-                <div
-                  className="signal-meter"
-                  aria-label={`${mastered} of ${nodes.length} coordinates mastered`}
-                >
-                  <span
-                    style={{
-                      transform: `scaleX(${
-                        nodes.length ? mastered / nodes.length : 0
-                      })`,
-                    }}
-                  />
-                </div>
-                <details className="sector-manifest" open={expanded}>
-                  <summary
-                    onClick={(event) => {
-                      event.preventDefault();
-                      setExpandedGalaxyIds((current) =>
-                        current.includes(galaxy.id)
-                          ? current.filter((id) => id !== galaxy.id)
-                          : [...current, galaxy.id],
-                      );
-                    }}
-                  >
-                    Coordinate manifest
-                  </summary>
-                  {expanded ? (
-                    <ol>
-                      {nodes.map((article) => (
-                        <li
-                          data-complete={masteredIds.has(article.id)}
-                          key={article.id}
-                        >
-                          <span>
-                            {article.order.toString().padStart(2, "0")}
-                          </span>
-                          <Link href={`/articles/${article.id}`}>
-                            {article.title}
+                <h3>{expedition.title}</h3>
+                <p>{expedition.summary}</p>
+                <ol>
+                  {expedition.steps.map((step, index) => {
+                    const checked = completed.some(
+                      (completedStep) => completedStep.id === step.id,
+                    );
+                    const type = missionStepType(step);
+                    return (
+                      <li data-complete={checked} key={step.id}>
+                        <span>{(index + 1).toString().padStart(2, "0")}</span>
+                        <div>
+                          <em>
+                            {type === "lesson"
+                              ? "Lesson briefing"
+                              : "SIM mission"}
+                          </em>
+                          <strong>{step.title}</strong>
+                          <small>{step.brief}</small>
+                          <Link
+                            className={
+                              type === "lesson"
+                                ? "related-lesson-cta"
+                                : undefined
+                            }
+                            href={missionStepHref(expedition.id, step)}
+                          >
+                            {type === "lesson"
+                              ? "Open related lesson"
+                              : "Open SIM mission"}
+                            <span aria-hidden="true">&rarr;</span>
                           </Link>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : null}
-                </details>
-                {nextNode ? (
-                  <Link href={`/articles/${nextNode.id}`}>
-                    {mastered === nodes.length
-                      ? "Revisit sector"
-                      : `Next: ${nextNode.title}`}
-                  </Link>
-                ) : null}
+                        </div>
+                        <span
+                          className="mission-step-status"
+                          aria-label={`${step.title}: ${
+                            checked ? "complete" : "not complete"
+                          }`}
+                        >
+                          {checked ? "✓" : "→"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <footer>
+                  <span>
+                    {completed.length}/{expedition.steps.length} stages
+                  </span>
+                  <div
+                    className="signal-meter"
+                    aria-label={`${completed.length} of ${expedition.steps.length} checkpoints complete`}
+                  >
+                    <span
+                      style={{
+                        transform: `scaleX(${
+                          completed.length / expedition.steps.length
+                        })`,
+                      }}
+                    />
+                  </div>
+                </footer>
               </article>
             );
           })}
@@ -305,12 +319,12 @@ export default function MissionControl({
       >
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Autopilot routes</p>
-            <h2 id="plans-title">Personal flight plans</h2>
+            <p className="eyebrow">Choose your route</p>
+            <h2 id="plans-title">Learning plans</h2>
           </div>
           <p>
-            Activate one outcome-driven route. Prerequisite coordinates remain
-            ordinary lessons, so the plan never traps you in a wizard.
+            Pick a goal-based lesson sequence. Your active plan powers the
+            next learning step above.
           </p>
         </div>
         <div className="plan-selector" aria-label="Available flight plans">
@@ -384,96 +398,86 @@ export default function MissionControl({
 
       <section
         className="control-section"
-        id="missions"
-        aria-labelledby="expeditions-title"
+        id="galaxies"
+        aria-labelledby="galaxies-title"
       >
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Guided routes</p>
-            <h2 id="expeditions-title">Missions</h2>
+            <p className="eyebrow">Overall progress</p>
+            <h2 id="galaxies-title">Galaxy progress</h2>
           </div>
-          <p>
-            Every mission is one ordered thread: open the lesson briefing,
-            confirm mastery, pass the matching SIM check, then continue.
-          </p>
+          <p>Review all 50 lessons by galaxy and open any coordinate.</p>
         </div>
-        <div className="expedition-board">
-          {expeditions.map((expedition) => {
-            const completed = expedition.steps.filter((step) =>
-              missionStepCompleted(
-                step,
-                progress.masteredArticleIds,
-                progress.passedLabChallenges,
-              ),
-            );
+        <div className="galaxy-manifest">
+          {galaxyNodes.map(({ galaxy, nodes }) => {
+            const mastered = nodes.filter((article) =>
+              masteredIds.has(article.id),
+            ).length;
+            const nextNode =
+              nodes.find((article) => !masteredIds.has(article.id)) ?? nodes[0];
+            const expanded = expandedGalaxyIds.includes(galaxy.id);
+
             return (
-              <article key={expedition.id}>
+              <article key={galaxy.id}>
                 <header>
-                  <span>{expedition.callSign}</span>
-                  <small>{expedition.difficulty}</small>
+                  <span>{galaxy.callSign}</span>
+                  <small>
+                    {mastered.toString().padStart(2, "0")} /{" "}
+                    {nodes.length.toString().padStart(2, "0")}
+                  </small>
                 </header>
-                <h3>{expedition.title}</h3>
-                <p>{expedition.summary}</p>
-                <ol>
-                  {expedition.steps.map((step, index) => {
-                    const checked = completed.some(
-                      (completedStep) => completedStep.id === step.id,
-                    );
-                    const type = missionStepType(step);
-                    return (
-                      <li data-complete={checked} key={step.id}>
-                        <span>{(index + 1).toString().padStart(2, "0")}</span>
-                        <div>
-                          <em>
-                            {type === "lesson"
-                              ? "Lesson briefing"
-                              : "SIM mission"}
-                          </em>
-                          <strong>{step.title}</strong>
-                          <small>{step.brief}</small>
-                          <Link
-                            className={
-                              type === "lesson"
-                                ? "related-lesson-cta"
-                                : undefined
-                            }
-                            href={missionStepHref(expedition.id, step)}
-                          >
-                            {type === "lesson"
-                              ? "Open related lesson"
-                              : "Open SIM mission"}
-                            <span aria-hidden="true">&rarr;</span>
-                          </Link>
-                        </div>
-                        <span
-                          className="mission-step-status"
-                          aria-label={`${step.title}: ${
-                            checked ? "complete" : "not complete"
-                          }`}
-                        >
-                          {checked ? "✓" : "→"}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-                <footer>
-                  <span>
-                    {completed.length}/{expedition.steps.length} stages
-                  </span>
-                  <div
-                    className="signal-meter"
-                    aria-label={`${completed.length} of ${expedition.steps.length} checkpoints complete`}
+                <h3>{galaxy.title}</h3>
+                <p>{galaxy.summary}</p>
+                <div
+                  className="signal-meter"
+                  aria-label={`${mastered} of ${nodes.length} coordinates mastered`}
+                >
+                  <span
+                    style={{
+                      transform: `scaleX(${
+                        nodes.length ? mastered / nodes.length : 0
+                      })`,
+                    }}
+                  />
+                </div>
+                <details className="sector-manifest" open={expanded}>
+                  <summary
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setExpandedGalaxyIds((current) =>
+                        current.includes(galaxy.id)
+                          ? current.filter((id) => id !== galaxy.id)
+                          : [...current, galaxy.id],
+                      );
+                    }}
                   >
-                    <span
-                      style={{
-                        transform: `scaleX(${
-                          completed.length / expedition.steps.length
-                        })`,
-                      }}
-                    />
-                  </div>
-                </footer>
+                    Coordinate manifest
+                  </summary>
+                  {expanded ? (
+                    <ol>
+                      {nodes.map((article) => (
+                        <li
+                          data-complete={masteredIds.has(article.id)}
+                          key={article.id}
+                        >
+                          <span>
+                            {article.order.toString().padStart(2, "0")}
+                          </span>
+                          <Link href={`/articles/${article.id}`}>
+                            {article.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </details>
+                {nextNode ? (
+                  <Link href={`/articles/${nextNode.id}`}>
+                    {mastered === nodes.length
+                      ? "Revisit sector"
+                      : `Next: ${nextNode.title}`}
+                  </Link>
+                ) : null}
               </article>
             );
           })}

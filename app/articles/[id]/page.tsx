@@ -77,6 +77,11 @@ export default async function ArticlePage({
         <ViewNavigation
           current="read"
           readHref={`/articles/${article.id}`}
+          missionHref={
+            mission
+              ? `/mission-control#mission-${encodeURIComponent(mission)}`
+              : undefined
+          }
         />
       </header>
 

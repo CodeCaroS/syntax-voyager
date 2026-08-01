@@ -5,16 +5,18 @@ type KnowledgeView = "galaxy" | "read" | "mission" | "simulation";
 export default function ViewNavigation({
   current,
   readHref,
+  missionHref = "/mission-control",
   className,
 }: {
   current: KnowledgeView;
   readHref: string;
+  missionHref?: string;
   className?: string;
 }) {
   const views = [
     { id: "galaxy", label: "Galaxy", href: "/" },
     { id: "read", label: "Read", href: readHref },
-    { id: "mission", label: "Mission", href: "/mission-control" },
+    { id: "mission", label: "Mission", href: missionHref },
     { id: "simulation", label: "Sim", href: "/lab" },
   ] as const;
 

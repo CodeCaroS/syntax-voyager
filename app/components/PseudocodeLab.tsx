@@ -145,6 +145,11 @@ export default function PseudocodeLab({
           <ViewNavigation
             current="simulation"
             readHref={`/articles/${challenge.relatedArticleId}`}
+            missionHref={
+              activeMission
+                ? `/mission-control#mission-${encodeURIComponent(activeMission.mission.id)}`
+                : undefined
+            }
           />
         </div>
         <div>

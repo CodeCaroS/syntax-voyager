@@ -282,6 +282,12 @@ test("one mission thread carries a lesson into its SIM and next lesson", async (
   await expect(page).toHaveURL(
     /\/lab\?challenge=fuel-correction&mission=guessing-signal&step=correct-fuel/,
   );
+  await expect(
+    page.getByRole("link", { name: "Mission", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    "/mission-control#mission-guessing-signal",
+  );
   const missionRoute = page.getByRole("navigation", {
     name: "Mission route",
   });
@@ -300,7 +306,10 @@ test("one mission thread carries a lesson into its SIM and next lesson", async (
   );
 
   await page.getByRole("link", { name: "Mission", exact: true }).click();
-  await expect(page).toHaveURL(/\/mission-control$/);
+  await expect(page).toHaveURL(
+    /\/mission-control#mission-guessing-signal$/,
+  );
+  await expect(page.locator("#mission-guessing-signal")).toBeInViewport();
   await page.reload();
   await expect(page.locator(".expedition-board article").first()).toContainText(
     "2/8 stages",
@@ -510,6 +519,9 @@ test("mission control persists plans, expands manifests, and safely resets stora
   page,
 }) => {
   await page.goto("/mission-control");
+  await expect(
+    page.locator(".control-section > .section-heading h2"),
+  ).toHaveText(["Guided missions", "Learning plans", "Galaxy progress"]);
   await expect(page.locator(".mission-telemetry dd").first()).toHaveText(
     /^\d+$/,
   );

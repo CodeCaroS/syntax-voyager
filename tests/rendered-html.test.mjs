@@ -106,18 +106,18 @@ test("server-renders an intermediate software engineering lesson", async () => {
   assert.doesNotMatch(html, /Coordinate not found/);
 });
 
-test("server-renders mission control with galaxies, routes, and expeditions", async () => {
+test("server-renders mission control with missions, plans, and galaxy progress", async () => {
   const response = await render("/mission-control");
   assert.equal(response.status, 200);
 
   const html = await response.text();
   assert.match(html, /Your route through knowledge space/);
-  assert.match(html, /Five knowledge galaxies/);
-  assert.match(html, /Personal flight plans/);
+  assert.match(html, /Guided missions/);
+  assert.match(html, /Learning plans/);
+  assert.match(html, /Galaxy progress/);
   assert.match(html, /Next learning step/);
   assert.match(html, /Continue route/);
   assert.match(html, /starmap-underlay/);
-  assert.match(html, />Missions</);
   assert.match(html, /Origin sector/);
   assert.match(html, /Reliability commander/);
   assert.match(html, /Restore the docking sequence/);
