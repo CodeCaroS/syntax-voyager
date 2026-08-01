@@ -76,6 +76,33 @@ test("search, keyboard navigation, and reduced motion operate the galaxy", async
   );
 });
 
+test("the galaxy restores the last opened star after reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Choose a coordinate").fill("variables");
+  await page
+    .getByRole("button", { name: "02 Values and Variables", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Values and Variables" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const stored = window.localStorage.getItem(key);
+        return stored ? JSON.parse(stored).lastSelectedArticleId : null;
+      }, STORAGE_KEY),
+    )
+    .toBe("values-and-variables");
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Values and Variables" }),
+  ).toBeVisible();
+});
+
 test("the four views share one navigation and preserve the learning context", async ({
   page,
 }) => {
@@ -177,7 +204,7 @@ test("passing a black hole test warps directly to the next galaxy", async ({
   const galaxyGate = page.locator(".galaxy-gate");
   await page
     .getByRole("button", {
-      name: "Unselect focused sun and return to galaxy overview",
+      name: "Unselect focused star and return to galaxy overview",
     })
     .click();
   await expect(galaxyGate).toBeDisabled();
@@ -205,7 +232,7 @@ test("passing a black hole test warps directly to the next galaxy", async ({
   await expect(galaxyGate).toBeEnabled();
   await page
     .getByRole("button", {
-      name: "Unselect focused sun and return to galaxy overview",
+      name: "Unselect focused star and return to galaxy overview",
     })
     .click();
   await expect(galaxyGate).toBeVisible();
@@ -250,7 +277,7 @@ test("galaxy selection completes when animation frames stall", async ({
 
   await page
     .getByRole("button", {
-      name: "Unselect focused sun and return to galaxy overview",
+      name: "Unselect focused star and return to galaxy overview",
     })
     .click();
   await expect(page.locator(".galaxy-gate")).toBeVisible({ timeout: 2_000 });
@@ -536,6 +563,20 @@ test("mission control persists plans, expands manifests, and safely resets stora
   await firstManifest.getByText("Coordinate manifest").click();
   await expect(firstManifest).not.toHaveAttribute("open", "");
 
+  const firstLockedArticle = articles.find((article) =>
+    galaxies[1].includes(article.order),
+  )!;
+  const lockedGalaxy = page
+    .locator(".galaxy-manifest > article")
+    .filter({ hasText: galaxies[1].title });
+  await expect(lockedGalaxy.locator(".sector-manifest")).toBeHidden();
+  await expect(lockedGalaxy).toContainText(
+    "Pass the current black-hole gate to reveal coordinates.",
+  );
+  await expect(
+    page.locator(`a[href^="/articles/${firstLockedArticle.id}"]`),
+  ).toHaveCount(0);
+
   for (const plan of flightPlans) {
     const option = page.getByRole("button", {
       name: new RegExp(plan.title),
@@ -607,7 +648,13 @@ test("article controls translate examples, persist mastery, and reject mismatche
   );
 
   const bridge = page.locator(".language-bridge").first();
-  for (const language of ["TypeScript", "Python", "Java", "Pseudocode"]) {
+  for (const language of [
+    "TypeScript",
+    "Python",
+    "Java",
+    "PHP",
+    "Pseudocode",
+  ]) {
     await bridge.getByRole("button", { name: `Show ${language}` }).click();
     await expect(bridge.locator("code")).toHaveAttribute(
       "data-language",
@@ -711,7 +758,7 @@ test("all galaxy gates validate a wrong answer before unlocking the next sector"
   await page.reload();
   await page
     .getByRole("button", {
-      name: "Unselect focused sun and return to galaxy overview",
+      name: "Unselect focused star and return to galaxy overview",
     })
     .click();
 
@@ -825,7 +872,7 @@ test("mobile galaxy keeps search and primary controls reachable", async ({
   await page.reload();
   await page
     .getByRole("button", {
-      name: "Unselect focused sun and return to galaxy overview",
+      name: "Unselect focused star and return to galaxy overview",
     })
     .click();
   const galaxyGate = page.locator(".galaxy-gate");

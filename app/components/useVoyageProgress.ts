@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export interface VoyageProgress {
   activePlanId: string;
+  lastSelectedArticleId: string;
   visitedArticleIds: string[];
   masteredArticleIds: string[];
   completedExpeditionSteps: Record<string, string[]>;
@@ -17,6 +18,7 @@ const PROGRESS_EVENT = "syntax-voyager:progress";
 
 export const emptyVoyageProgress: VoyageProgress = {
   activePlanId: "cadet-launch",
+  lastSelectedArticleId: "",
   visitedArticleIds: [],
   masteredArticleIds: [],
   completedExpeditionSteps: {},
@@ -28,6 +30,10 @@ function normalizeProgress(value: Partial<VoyageProgress>): VoyageProgress {
   const galaxyIds = new Set(galaxies.map((galaxy) => galaxy.id));
   return {
     activePlanId: value.activePlanId || emptyVoyageProgress.activePlanId,
+    lastSelectedArticleId:
+      typeof value.lastSelectedArticleId === "string"
+        ? value.lastSelectedArticleId
+        : "",
     visitedArticleIds: Array.isArray(value.visitedArticleIds)
       ? value.visitedArticleIds
       : [],

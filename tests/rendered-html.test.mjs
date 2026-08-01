@@ -86,6 +86,7 @@ test("server-renders a static article coordinate", async () => {
   assert.match(html, /id="variables-give-values-names"/);
   assert.match(html, /Translation matrix/);
   assert.match(html, /Show TypeScript/);
+  assert.match(html, /Show PHP/);
   assert.match(html, /Confirm mastery/);
   assert.match(
     html,
@@ -124,6 +125,8 @@ test("server-renders mission control with missions, plans, and galaxy progress",
   assert.match(html, /Coordinate manifest/);
   assert.match(html, /class="related-lesson-cta"/);
   assert.match(html, /Open related lesson/);
+  assert.match(html, /Pass the current black-hole gate to reveal coordinates/);
+  assert.doesNotMatch(html, /href="\/articles\/state-and-persistence/);
   assert.doesNotMatch(
     html,
     /href="\/articles\/documentation-and-communication"/,

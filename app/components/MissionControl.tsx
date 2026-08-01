@@ -8,8 +8,10 @@ import {
   galaxies,
   galaxyForOrder,
   isGalaxyUnlocked,
+  labChallenges,
   missionStepCompleted,
   missionStepHref,
+  missionStepTargetId,
   missionStepType,
   nextArticleIdForPlan,
   type GalaxyId,
@@ -252,6 +254,16 @@ export default function MissionControl({
                       (completedStep) => completedStep.id === step.id,
                     );
                     const type = missionStepType(step);
+                    const targetId = missionStepTargetId(step);
+                    const relatedArticleId =
+                      type === "lesson"
+                        ? targetId
+                        : labChallenges.find(
+                            (challenge) => challenge.id === targetId,
+                          )?.relatedArticleId;
+                    const unlocked = relatedArticleId
+                      ? unlockedArticleIds.has(relatedArticleId)
+                      : false;
                     return (
                       <li data-complete={checked} key={step.id}>
                         <span>{(index + 1).toString().padStart(2, "0")}</span>
@@ -263,27 +275,35 @@ export default function MissionControl({
                           </em>
                           <strong>{step.title}</strong>
                           <small>{step.brief}</small>
-                          <Link
-                            className={
-                              type === "lesson"
-                                ? "related-lesson-cta"
-                                : undefined
-                            }
-                            href={missionStepHref(expedition.id, step)}
-                          >
-                            {type === "lesson"
-                              ? "Open related lesson"
-                              : "Open SIM mission"}
-                            <span aria-hidden="true">&rarr;</span>
-                          </Link>
+                          {unlocked ? (
+                            <Link
+                              className={
+                                type === "lesson"
+                                  ? "related-lesson-cta"
+                                  : undefined
+                              }
+                              href={missionStepHref(expedition.id, step)}
+                            >
+                              {type === "lesson"
+                                ? "Open related lesson"
+                                : "Open SIM mission"}
+                              <span aria-hidden="true">&rarr;</span>
+                            </Link>
+                          ) : (
+                            <span>Galaxy locked</span>
+                          )}
                         </div>
                         <span
                           className="mission-step-status"
                           aria-label={`${step.title}: ${
-                            checked ? "complete" : "not complete"
+                            checked
+                              ? "complete"
+                              : unlocked
+                                ? "not complete"
+                                : "locked"
                           }`}
                         >
-                          {checked ? "✓" : "→"}
+                          {checked ? "✓" : unlocked ? "→" : "—"}
                         </span>
                       </li>
                     );
@@ -406,16 +426,23 @@ export default function MissionControl({
             <p className="eyebrow">Overall progress</p>
             <h2 id="galaxies-title">Galaxy progress</h2>
           </div>
-          <p>Review all 50 lessons by galaxy and open any coordinate.</p>
+          <p>Review unlocked lessons by galaxy and open their coordinates.</p>
         </div>
         <div className="galaxy-manifest">
           {galaxyNodes.map(({ galaxy, nodes }) => {
+            const unlocked = isGalaxyUnlocked(
+              galaxy.id,
+              progress.passedGalaxyGates,
+            );
             const mastered = nodes.filter((article) =>
               masteredIds.has(article.id),
             ).length;
-            const nextNode =
-              nodes.find((article) => !masteredIds.has(article.id)) ?? nodes[0];
-            const expanded = expandedGalaxyIds.includes(galaxy.id);
+            const nextNode = unlocked
+              ? (nodes.find((article) => !masteredIds.has(article.id)) ??
+                nodes[0])
+              : undefined;
+            const expanded =
+              unlocked && expandedGalaxyIds.includes(galaxy.id);
 
             return (
               <article key={galaxy.id}>
@@ -440,7 +467,11 @@ export default function MissionControl({
                     }}
                   />
                 </div>
-                <details className="sector-manifest" open={expanded}>
+                <details
+                  className="sector-manifest"
+                  hidden={!unlocked}
+                  open={expanded}
+                >
                   <summary
                     onClick={(event) => {
                       event.preventDefault();
@@ -471,6 +502,9 @@ export default function MissionControl({
                     </ol>
                   ) : null}
                 </details>
+                {!unlocked ? (
+                  <p>Pass the current black-hole gate to reveal coordinates.</p>
+                ) : null}
                 {nextNode ? (
                   <Link href={`/articles/${nextNode.id}`}>
                     {mastered === nodes.length

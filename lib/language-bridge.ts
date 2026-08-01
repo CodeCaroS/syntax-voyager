@@ -1,4 +1,9 @@
-export type BridgeLanguage = "pseudocode" | "typescript" | "python" | "java";
+export type BridgeLanguage =
+  | "pseudocode"
+  | "typescript"
+  | "python"
+  | "java"
+  | "php";
 
 export const bridgeLanguages: Array<{
   id: BridgeLanguage;
@@ -9,7 +14,44 @@ export const bridgeLanguages: Array<{
   { id: "typescript", label: "TS", longLabel: "TypeScript" },
   { id: "python", label: "PY", longLabel: "Python" },
   { id: "java", label: "JAVA", longLabel: "Java" },
+  { id: "php", label: "PHP", longLabel: "PHP" },
 ];
+
+const phpReservedWords = new Set(["true", "false", "null"]);
+
+function translatePhpVariables(expression: string) {
+  return expression
+    .split(/("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/)
+    .map((part, index) => {
+      if (index % 2) return part;
+      const withProperties = part.replace(
+        /\b([a-z_][a-z0-9_]*)((?:\.[a-z_][a-z0-9_]*)+)/g,
+        (_, root: string, path: string) =>
+          `$${root}${path
+            .slice(1)
+            .split(".")
+            .map((property) => `["${property}"]`)
+            .join("")}`,
+      );
+      return withProperties.replace(
+        /\b[a-z_][a-z0-9_]*\b/g,
+        (identifier, offset, input) => {
+          const before = input.slice(0, offset);
+          const after = input.slice(offset + identifier.length);
+          if (
+            phpReservedWords.has(identifier) ||
+            before.endsWith("$") ||
+            before.endsWith('"') ||
+            /^\s*[:(]/.test(after)
+          ) {
+            return identifier;
+          }
+          return `$${identifier}`;
+        },
+      );
+    })
+    .join("");
+}
 
 export function isPseudocodeSource(source: string) {
   return source
@@ -44,6 +86,21 @@ function translateExpression(
       .replace(/\bLENGTH OF\s+([a-z_][a-z0-9_]*)/gi, "len($1)");
   }
 
+  if (language === "php") {
+    translated = translated
+      .replace(/\bAND\b/gi, "&&")
+      .replace(/\bOR\b/gi, "||")
+      .replace(/\bNOT\b/gi, "!")
+      .replace(/\bTRUE\b/g, "true")
+      .replace(/\bFALSE\b/g, "false")
+      .replace(/\bNOTHING\b/g, "null")
+      .replace(
+        /\bLENGTH OF\s+([a-z_][a-z0-9_]*)/gi,
+        (_, name: string) => `count($${name})`,
+      );
+    return translatePhpVariables(translated);
+  }
+
   translated = translated
     .replace(/\bAND\b/gi, "&&")
     .replace(/\bOR\b/gi, "||")
@@ -69,6 +126,8 @@ function translateLine(
     const [, name, expression] = set;
     const value = translateExpression(expression, language);
     if (language === "python") return `${indentation}${name} = ${value}`;
+    if (language === "php")
+      return `${indentation}$${name} = ${value};`;
     const declaration = declared.has(name)
       ? ""
       : language === "java"
@@ -82,6 +141,7 @@ function translateLine(
   if (display) {
     const value = translateExpression(display[1], language);
     if (language === "python") return `${indentation}print(${value})`;
+    if (language === "php") return `${indentation}print_r(${value});`;
     if (language === "java")
       return `${indentation}System.out.println(${value});`;
     return `${indentation}console.log(${value});`;
@@ -93,6 +153,8 @@ function translateLine(
     declared.add(name);
     if (language === "python")
       return `${indentation}${name} = input(${prompt})`;
+    if (language === "php")
+      return `${indentation}$${name} = readline(${prompt});`;
     if (language === "java")
       return `${indentation}var ${name} = scanner.nextLine(); // ${prompt}`;
     return `${indentation}const ${name} = prompt(${prompt});`;
@@ -137,6 +199,8 @@ function translateLine(
     const values = translateExpression(expression, language);
     if (language === "python")
       return `${indentation}for ${name} in ${values}:`;
+    if (language === "php")
+      return `${indentation}foreach (${values} as $${name}) {`;
     if (language === "java")
       return `${indentation}for (var ${name} : ${values}) {`;
     return `${indentation}for (const ${name} of ${values}) {`;
@@ -151,6 +215,8 @@ function translateLine(
     const end = translateExpression(to, language);
     if (language === "python")
       return `${indentation}for ${name} in range(${start}, ${end} + 1):`;
+    if (language === "php")
+      return `${indentation}for ($${name} = ${start}; $${name} <= ${end}; $${name} += 1) {`;
     const declaration = language === "java" ? "int" : "let";
     return `${indentation}for (${declaration} ${name} = ${start}; ${name} <= ${end}; ${name} += 1) {`;
   }
@@ -162,6 +228,15 @@ function translateLine(
     const [, name, parameters] = functionLine;
     if (language === "python")
       return `${indentation}def ${name}(${parameters}):`;
+    if (language === "php") {
+      const phpParameters = parameters
+        .split(",")
+        .map((parameter) => parameter.trim())
+        .filter(Boolean)
+        .map((parameter) => `$${parameter}`)
+        .join(", ");
+      return `${indentation}function ${name}(${phpParameters}) {`;
+    }
     if (language === "java") {
       const javaParameters = parameters
         .split(",")
@@ -189,6 +264,8 @@ function translateLine(
   );
   if (append) {
     const value = translateExpression(append[1], language);
+    if (language === "php")
+      return `${indentation}$${append[2]}[] = ${value};`;
     const method = language === "python" ? "append" : "push";
     return language === "java"
       ? `${indentation}${append[2]}.add(${value});`
@@ -208,7 +285,7 @@ export function translatePseudocode(
 ) {
   if (language === "pseudocode") return source;
   const declared = new Set<string>();
-  return source
+  const translated = source
     .split(/\r?\n/)
     .map((line) => {
       const indentation = line.match(/^\s*/)?.[0] ?? "";
@@ -217,4 +294,5 @@ export function translatePseudocode(
     .filter((line, index, lines) => line || lines[index - 1])
     .join("\n")
     .trimEnd();
+  return language === "php" ? `<?php\n${translated}` : translated;
 }

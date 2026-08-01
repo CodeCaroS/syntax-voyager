@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   bridgeLanguages,
+  isPseudocodeSource,
   translatePseudocode,
 } from "../lib/language-bridge.ts";
 import {
@@ -231,13 +232,40 @@ test("all bundled pseudocode simulations execute and pass", () => {
   }
 });
 
-test("the language bridge produces all four views", () => {
+test("the language bridge produces all five views", () => {
   const source = labChallenges[3].starter;
   assert.deepEqual(
     bridgeLanguages.map(({ id }) => id),
-    ["pseudocode", "typescript", "python", "java"],
+    ["pseudocode", "typescript", "python", "java", "php"],
   );
   assert.match(translatePseudocode(source, "typescript"), /function cargo_mass/);
   assert.match(translatePseudocode(source, "python"), /def cargo_mass/);
   assert.match(translatePseudocode(source, "java"), /static Object cargo_mass/);
+  const php = translatePseudocode(source, "php");
+  assert.match(php, /^<\?php/);
+  assert.match(php, /function cargo_mass\(\$crates, \$mass_each\)/);
+  assert.match(php, /\$total = cargo_mass\(4, 6\);/);
+  assert.match(php, /print_r\(\$total\);/);
+  assert.match(
+    translatePseudocode(labChallenges[1].starter, "php"),
+    /if \(\$clearance >= 5\)/,
+  );
+  assert.match(
+    translatePseudocode(labChallenges[4].starter, "php"),
+    /\$approach_log\[\] = "orbit-1";/,
+  );
+
+  let translatedExamples = 0;
+  for (const article of articles) {
+    for (const match of article.body.matchAll(
+      /```[^\r\n]*\r?\n([\s\S]*?)```/g,
+    )) {
+      if (!isPseudocodeSource(match[1])) continue;
+      const translated = translatePseudocode(match[1].trimEnd(), "php");
+      assert.match(translated, /^<\?php\n/, article.id);
+      assert.doesNotMatch(translated, /\bundefined\b/, article.id);
+      translatedExamples += 1;
+    }
+  }
+  assert.ok(translatedExamples > 0);
 });

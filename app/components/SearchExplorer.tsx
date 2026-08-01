@@ -145,6 +145,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     articles[0]?.galaxy ?? galaxies[0].title,
   );
   const selectedIdRef = useRef(selectedId);
+  const restoredStarRef = useRef(false);
   const { progress, ready, updateProgress } = useVoyageProgress();
   const gateIndex = ready
     ? galaxyGates.findIndex(
@@ -335,7 +336,14 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
       : { id: "", startedAt: 0 };
     setSelectedId(warp.targetId);
     setJourneyPhase(warp.targetId ? "arrived" : "cruising");
-  }, []);
+    if (warp.targetId) {
+      updateProgress((current) =>
+        current.lastSelectedArticleId === warp.targetId
+          ? current
+          : { ...current, lastSelectedArticleId: warp.targetId },
+      );
+    }
+  }, [updateProgress]);
 
   useEffect(
     () => () => {
@@ -448,6 +456,32 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
     },
     [completeWarp, positions],
   );
+
+  useEffect(() => {
+    if (!ready || restoredStarRef.current) return;
+    const animationFrame = window.requestAnimationFrame(() => {
+      const lastStar = unlockedArticles.find(
+        (article) => article.id === progress.lastSelectedArticleId,
+      );
+      if (!lastStar) {
+        restoredStarRef.current = true;
+        return;
+      }
+      if (activeGalaxy.title !== lastStar.galaxy) {
+        setActiveGalaxyTitle(lastStar.galaxy);
+        return;
+      }
+      restoredStarRef.current = true;
+      warpTo(lastStar.id);
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [
+    activeGalaxy.title,
+    progress.lastSelectedArticleId,
+    ready,
+    unlockedArticles,
+    warpTo,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1557,7 +1591,7 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
         <canvas
           ref={canvasRef}
           className="universe-canvas"
-          aria-label="Interactive 3D map of connected software knowledge. Drag to rotate, use the arrow keys, or choose a node from the search. Click the focused sun again or press Escape to return to the galaxy overview."
+          aria-label="Interactive 3D map of connected software knowledge. Drag to rotate, use the arrow keys, or choose a node from the search. Click the focused star again or press Escape to return to the galaxy overview."
           role="img"
           tabIndex={0}
           onKeyDown={(event) => {
@@ -1861,9 +1895,9 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
             type="button"
             disabled={!selectedId && journeyPhase !== "warping"}
             onClick={() => warpTo("")}
-            aria-label="Unselect focused sun and return to galaxy overview"
+            aria-label="Unselect focused star and return to galaxy overview"
           >
-            Unselect sun
+            Unselect star
           </button>
           <ViewNavigation
             className="galaxy-view-navigation"

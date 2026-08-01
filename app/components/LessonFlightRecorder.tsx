@@ -93,10 +93,12 @@ export default function LessonFlightRecorder({
 
   useEffect(() => {
     updateProgress((current) =>
+      current.lastSelectedArticleId === articleId &&
       current.visitedArticleIds.includes(articleId)
         ? current
         : {
             ...current,
+            lastSelectedArticleId: articleId,
             visitedArticleIds: unique([
               ...current.visitedArticleIds,
               articleId,
@@ -126,6 +128,7 @@ export default function LessonFlightRecorder({
             : "Reading flight log"}
         </p>
         <button
+          className="mastery-action"
           type="button"
           aria-pressed={mastered}
           onClick={() =>
@@ -137,7 +140,10 @@ export default function LessonFlightRecorder({
             }))
           }
         >
-          {mastered ? "Reopen training" : "Confirm mastery"}
+          <span>{mastered ? "Reopen training" : "Confirm mastery"}</span>
+          <small>
+            {mastered ? "Mastery confirmed" : "Mark lesson complete"}
+          </small>
         </button>
         <Link className="lesson-next" href={nextHref}>
           <span>

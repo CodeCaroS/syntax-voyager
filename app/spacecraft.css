@@ -877,6 +877,9 @@ input,
 
 .galaxy-page .node-inspector {
   top: 134px;
+  width: min(320px, calc(100% - 48px));
+  max-height: min(54dvh, 440px);
+  padding: 14px;
   border: 1px solid var(--line);
   border-top: 3px solid var(--signal);
   background: #07100f;
@@ -886,7 +889,7 @@ input,
 }
 
 .galaxy-page .node-profile-header {
-  padding-bottom: 10px;
+  padding-bottom: 7px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -898,9 +901,12 @@ input,
 }
 
 .galaxy-page .node-inspector h2 {
+  margin: 11px 0 6px;
   color: var(--paper);
   font-family: var(--font-mono);
+  font-size: clamp(20px, 1.8vw, 26px);
   font-weight: 700;
+  line-height: 1;
   letter-spacing: -0.05em;
   text-transform: uppercase;
 }
@@ -908,11 +914,19 @@ input,
 .galaxy-page .node-inspector p {
   color: #9fb3af;
   font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .galaxy-page .node-profile-meta {
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  margin-top: 12px;
   border-color: var(--line);
+}
+
+.galaxy-page .node-profile-meta div {
+  gap: 3px;
+  padding: 7px 8px;
 }
 
 .galaxy-page .node-profile-meta div,
@@ -922,8 +936,26 @@ input,
 }
 
 .galaxy-page .node-connections button {
-  padding-right: 8px;
-  padding-left: 8px;
+  grid-template-columns: 24px 1fr;
+  gap: 6px;
+  padding: 7px 6px;
+}
+
+.galaxy-page .node-connections {
+  margin-top: 12px;
+}
+
+.galaxy-page .node-connections ul {
+  max-height: 126px;
+  margin-top: 6px;
+}
+
+.galaxy-page .node-connections button > span:last-child {
+  gap: 2px;
+}
+
+.galaxy-page .node-connections button strong {
+  font-size: 10px;
 }
 
 .galaxy-page .node-connections button:hover,
@@ -932,7 +964,8 @@ input,
 }
 
 .galaxy-page .node-inspector > a {
-  padding: 13px 10px;
+  margin-top: 12px;
+  padding: 10px 8px;
   border: 1px solid var(--line);
 }
 
@@ -944,7 +977,7 @@ input,
 
 .galaxy-page .node-inspector > .node-task-cta {
   display: grid;
-  gap: 6px;
+  gap: 3px;
   background: var(--signal-soft);
 }
 
@@ -1220,6 +1253,46 @@ input,
 .lesson-flight-recorder a:hover,
 .lesson-flight-recorder a:focus-visible {
   outline: 0;
+  background: var(--signal);
+  color: #04100e;
+}
+
+.lesson-flight-recorder .mastery-action {
+  gap: 5px;
+  min-width: 148px;
+  background: var(--signal);
+  color: #04100e;
+  box-shadow: inset 0 -3px 0 rgba(4, 16, 14, 0.3);
+}
+
+.lesson-flight-recorder .mastery-action > span {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.lesson-flight-recorder .mastery-action > small {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.lesson-flight-recorder .mastery-action:hover,
+.lesson-flight-recorder .mastery-action:focus-visible {
+  background: var(--paper);
+}
+
+.lesson-flight-recorder .mastery-action:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+.lesson-flight-recorder .mastery-action[aria-pressed="true"] {
+  background: var(--signal-soft);
+  color: var(--signal);
+  box-shadow: inset 0 0 0 1px var(--signal);
+}
+
+.lesson-flight-recorder .mastery-action[aria-pressed="true"]:hover,
+.lesson-flight-recorder .mastery-action[aria-pressed="true"]:focus-visible {
   background: var(--signal);
   color: #04100e;
 }
@@ -3013,6 +3086,10 @@ input,
     max-height: 42dvh;
     margin: 0;
     border-top-width: 2px;
+  }
+
+  .galaxy-page .node-connections button {
+    min-height: 44px;
   }
 
   .universe-shell:has(.node-inspector) .universe-search {
