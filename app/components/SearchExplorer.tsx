@@ -6,6 +6,7 @@ import {
   nextNodeTask,
   nodeTaskProgress,
   nodeTasksForArticle,
+  planetOrbitAngle,
 } from "@/lib/voyage";
 import Link from "next/link";
 import {
@@ -192,14 +193,24 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
   const nodeTaskProgressById = useMemo(
     () =>
       new Map(
-        articles.map((article) => [
-          article.id,
-          nodeTaskProgress(
-            nodeTasksForArticle(article.id),
-            progress.masteredArticleIds,
-            progress.passedLabChallenges,
-          ),
-        ]),
+        articles.map((article) => {
+          const tasks = nodeTasksForArticle(article.id);
+          const progressFor = (kind?: "mission" | "simulation") =>
+            nodeTaskProgress(
+              tasks,
+              progress.masteredArticleIds,
+              progress.passedLabChallenges,
+              kind,
+            );
+          return [
+            article.id,
+            {
+              ...progressFor(),
+              missions: progressFor("mission"),
+              simulations: progressFor("simulation"),
+            },
+          ] as const;
+        }),
       ),
     [
       articles,
@@ -1174,14 +1185,29 @@ export function SearchExplorer({ articles }: { articles: SearchArticle[] }) {
               radius * 1.62,
             );
           });
+          const taskStatus = [
+            taskProgress?.missions.total
+              ? `TASKS ${taskProgress.missions.completed}/${taskProgress.missions.total}`
+              : "",
+            taskProgress?.simulations.total
+              ? `SIMS ${taskProgress.simulations.completed}/${taskProgress.simulations.total}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" // ");
+          if (taskStatus) {
+            context.font =
+              '700 8px "Cascadia Code", "SFMono-Regular", Consolas, monospace';
+            context.fillText(
+              taskStatus,
+              node.x,
+              node.y + 8 + titleLines.length * 15,
+              radius * 1.62,
+            );
+          }
 
           const tagAngleFor = (index: number) =>
-            index * 2.399963 +
-            (motionReduced
-              ? 0
-              : time *
-                (0.000035 + (index % 5) * 0.000009) *
-                (index % 2 === 0 ? 1 : -1));
+            planetOrbitAngle(index, time, motionReduced);
           const visibleTagLabels = new Set(
             node.article.tags
               .map((_, index) => ({

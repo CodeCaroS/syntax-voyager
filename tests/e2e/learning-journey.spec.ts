@@ -262,7 +262,10 @@ test("one mission thread carries a lesson into its SIM and next lesson", async (
   await page.goto("/mission-control");
   const mission = page.locator(".expedition-board article").first();
   await expect(mission).toContainText("Restore the docking sequence");
-  await mission.getByRole("link", { name: "Open lesson" }).first().click();
+  await mission
+    .getByRole("link", { name: "Open related lesson" })
+    .first()
+    .click();
 
   await expect(page).toHaveURL(
     /\/articles\/values-and-variables\?mission=guessing-signal&step=store-target/,

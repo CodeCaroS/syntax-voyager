@@ -431,8 +431,18 @@ export default function MissionControl({
                           </em>
                           <strong>{step.title}</strong>
                           <small>{step.brief}</small>
-                          <Link href={missionStepHref(expedition.id, step)}>
-                            Open {type === "lesson" ? "lesson" : "SIM mission"}
+                          <Link
+                            className={
+                              type === "lesson"
+                                ? "related-lesson-cta"
+                                : undefined
+                            }
+                            href={missionStepHref(expedition.id, step)}
+                          >
+                            {type === "lesson"
+                              ? "Open related lesson"
+                              : "Open SIM mission"}
+                            <span aria-hidden="true">&rarr;</span>
                           </Link>
                         </div>
                         <span

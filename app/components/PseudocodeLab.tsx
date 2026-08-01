@@ -168,6 +168,15 @@ export default function PseudocodeLab({
               / {labChallenges.length.toString().padStart(2, "0")}
             </strong>
           </header>
+          <Link
+            className="related-lesson-cta"
+            href={`/articles/${challenge.relatedArticleId}`}
+            aria-label="Open related lesson"
+          >
+            <span>Related theory</span>
+            <strong>Open related lesson</strong>
+            <i aria-hidden="true">&rarr;</i>
+          </Link>
           <div>
             {labChallenges.map((candidate) => {
               const passed = progress.passedLabChallenges.includes(candidate.id);
@@ -186,9 +195,6 @@ export default function PseudocodeLab({
               );
             })}
           </div>
-          <Link href={`/articles/${challenge.relatedArticleId}`}>
-            Open related lesson
-          </Link>
         </aside>
 
         <section className="simulation-workbench">

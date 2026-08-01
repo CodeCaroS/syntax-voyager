@@ -122,6 +122,8 @@ test("server-renders mission control with galaxies, routes, and expeditions", as
   assert.match(html, /Reliability commander/);
   assert.match(html, /Restore the docking sequence/);
   assert.match(html, /Coordinate manifest/);
+  assert.match(html, /class="related-lesson-cta"/);
+  assert.match(html, /Open related lesson/);
   assert.doesNotMatch(
     html,
     /href="\/articles\/documentation-and-communication"/,
@@ -141,4 +143,6 @@ test("server-renders the interactive pseudocode simulation deck", async () => {
   assert.match(html, /Check mission/);
   assert.match(html, /State telemetry/);
   assert.match(html, /Execution trace/);
+  assert.match(html, /class="related-lesson-cta"/);
+  assert.match(html, /Open related lesson/);
 });

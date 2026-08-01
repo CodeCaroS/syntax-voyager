@@ -62,6 +62,20 @@ export function galaxyForOrder(order: number) {
   return galaxies.find((galaxy) => galaxy.includes(order)) ?? galaxies[0];
 }
 
+export function planetOrbitAngle(
+  index: number,
+  time: number,
+  reducedMotion: boolean,
+) {
+  return (
+    index * 2.399963 +
+    time *
+      (0.000035 + (index % 5) * 0.000009) *
+      (index % 2 === 0 ? 1 : -1) *
+      (reducedMotion ? 0.35 : 1)
+  );
+}
+
 export interface GalaxyGate {
   galaxyId: GalaxyId;
   question: string;
@@ -802,12 +816,16 @@ export function nodeTaskProgress(
   tasks: readonly NodeTask[],
   masteredArticleIds: readonly string[],
   passedLabChallenges: readonly string[],
+  kind?: NodeTask["kind"],
 ) {
+  const relevantTasks = kind
+    ? tasks.filter((task) => task.kind === kind)
+    : tasks;
   return {
-    completed: tasks.filter((task) =>
+    completed: relevantTasks.filter((task) =>
       nodeTaskCompleted(task, masteredArticleIds, passedLabChallenges),
     ).length,
-    total: tasks.length,
+    total: relevantTasks.length,
   };
 }
 

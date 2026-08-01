@@ -25,6 +25,7 @@ import {
   nextNodeTask,
   nodeTaskProgress,
   nodeTasksForArticle,
+  planetOrbitAngle,
 } from "../lib/voyage.ts";
 
 const articles = JSON.parse(
@@ -56,6 +57,14 @@ test("each galaxy transition has a valid black hole gate", () => {
   assert.equal(isGalaxyUnlocked("systems-frontier", []), false);
   assert.equal(isGalaxyUnlocked("systems-frontier", ["origin-sector"]), true);
   assert.equal(isGalaxyUnlocked("algorithm-belt", ["systems-frontier"]), false);
+});
+
+test("planets keep orbiting gently when reduced motion is preferred", () => {
+  const normalTravel = planetOrbitAngle(0, 1_000, false) - planetOrbitAngle(0, 0, false);
+  const reducedTravel = planetOrbitAngle(0, 1_000, true) - planetOrbitAngle(0, 0, true);
+
+  assert.ok(reducedTravel > 0);
+  assert.ok(reducedTravel < normalTravel);
 });
 
 test("flight plans and mission stages use real lessons or simulations", () => {
@@ -147,6 +156,14 @@ test("nodes expose their linked mission and simulation progress", () => {
   assert.deepEqual(nodeTaskProgress(tasks, [], []), {
     completed: 0,
     total: 2,
+  });
+  assert.deepEqual(nodeTaskProgress(tasks, [], [], "mission"), {
+    completed: 0,
+    total: 1,
+  });
+  assert.deepEqual(nodeTaskProgress(tasks, [], [], "simulation"), {
+    completed: 0,
+    total: 1,
   });
   assert.equal(nextNodeTask(tasks, [], [])?.kind, "mission");
   assert.equal(
