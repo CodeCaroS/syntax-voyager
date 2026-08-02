@@ -795,10 +795,14 @@ test("all galaxy gates validate a wrong answer before unlocking the next sector"
   await page.getByRole("button", { name: "Close galaxy test" }).click();
 });
 
-test("primary views remain usable without horizontal overflow on mobile", async ({
+test("primary views remain responsive from small phones to small laptops", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  const viewports = [
+    { width: 320, height: 568 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+  ];
   const routes = [
     "/",
     "/mission-control",
@@ -806,15 +810,56 @@ test("primary views remain usable without horizontal overflow on mobile", async 
     "/lab?challenge=fuel-correction",
   ];
 
-  for (const route of routes) {
-    await test.step(route, async () => {
-      await page.goto(route);
-      await expect(page.getByRole("main").first()).toBeVisible();
-      await expect(
-        page.getByRole("navigation", { name: "View navigation" }),
-      ).toBeVisible();
-      await expectNoHorizontalOverflow(page);
-    });
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    for (const route of routes) {
+      await test.step(`${viewport.width}px ${route}`, async () => {
+        await page.goto(route);
+        await expect(page.getByRole("main").first()).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "View navigation" }),
+        ).toBeVisible();
+        await expectNoHorizontalOverflow(page);
+
+        const clippedControls = await page
+          .locator("a, button, input, select, textarea, summary")
+          .evaluateAll((elements) =>
+            elements.flatMap((element) => {
+              const bounds = element.getBoundingClientRect();
+              const style = getComputedStyle(element);
+              if (
+                !bounds.width ||
+                !bounds.height ||
+                style.display === "none" ||
+                style.visibility === "hidden"
+              ) {
+                return [];
+              }
+              return bounds.left < -1 || bounds.right > innerWidth + 1
+                ? [element.getAttribute("aria-label") ?? element.textContent]
+                : [];
+            }),
+          );
+        expect(clippedControls).toEqual([]);
+
+        if (viewport.width === 320) {
+          const undersizedTargets = await page
+            .locator(
+              ".brand, .back-link, .galaxy-page .node-inspector > a, .language-bridge-toolbar button, .expedition-board li a, .flight-plan-coordinate, .galaxy-manifest a, .sector-manifest summary",
+            )
+            .evaluateAll((elements) =>
+              elements.flatMap((element) => {
+                const bounds = element.getBoundingClientRect();
+                if (!bounds.width || !bounds.height) return [];
+                return bounds.width < 44 || bounds.height < 44
+                  ? [element.textContent]
+                  : [];
+              }),
+            );
+          expect(undersizedTargets).toEqual([]);
+        }
+      });
+    }
   }
 });
 
